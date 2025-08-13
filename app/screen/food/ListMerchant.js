@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-inline-styles */
 import { Component } from 'react';
 import {
   View,

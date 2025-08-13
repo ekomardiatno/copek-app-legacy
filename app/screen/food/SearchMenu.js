@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-inline-styles */
 import { Component } from 'react';
 import {
   View,
@@ -23,7 +24,7 @@ export default class SearchMenu extends Component {
     this.state = {
       page: 1,
       data: [],
-      isBottomScrollView: false,
+      isAbleToScroll: false,
       isFetchReached: false,
       scrolling: true,
       dataEmpty: false,
@@ -83,7 +84,6 @@ export default class SearchMenu extends Component {
               },
               () => {
                 this.setState({
-                  isBottomScrollView: false,
                   scrolling: true,
                 });
               },
@@ -94,7 +94,6 @@ export default class SearchMenu extends Component {
               },
               () => {
                 this.setState({
-                  isBottomScrollView: false,
                   scrolling: true,
                 });
               },
@@ -179,7 +178,7 @@ export default class SearchMenu extends Component {
     const {
       data,
       page,
-      isBottomScrollView,
+      isAbleToScroll,
       isFetchReached,
       scrolling,
       status,
@@ -219,6 +218,11 @@ export default class SearchMenu extends Component {
         {status === 'READY' && data.length > 0 && (
           <ScrollView
             bounces={false}
+            onScrollBeginDrag={() => {
+              this.setState({
+                isAbleToScroll: true
+              })
+            }}
             scrollEventThrottle={16}
             onMomentumScrollEnd={({nativeEvent}) => {
               if (isCloseToBottom(nativeEvent)) {
@@ -226,7 +230,6 @@ export default class SearchMenu extends Component {
                   scrolling &&
                   this.setState(
                     {
-                      isBottomScrollView: true,
                       scrolling: false,
                     },
                     () => {
@@ -248,25 +251,17 @@ export default class SearchMenu extends Component {
               } else {
                 clearInterval(this.timeoutFetch);
                 this.setState({
-                  isBottomScrollView: false,
                   scrolling: true,
                 });
               }
-            }}
-            onContentSizeChange={(width, height) => {
-              isBottomScrollView &&
-                this.scrollView._component.scrollResponderScrollToEnd({
-                  animated: true,
-                });
-            }}
-            ref={ref => (this.scrollView = ref)}>
+            }}>
             <Items
               headless={true}
               navigate={this._navigate}
               category="food"
               product={data}
             />
-            {isBottomScrollView && (
+            {(isAbleToScroll && !isFetchReached) && (
               <View
                 style={{
                   padding: 15,

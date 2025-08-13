@@ -47,7 +47,7 @@ export default class Main extends Component {
   };
 
   componentDidMount() {
-    console.log(this.props)
+    console.log(this.props);
     // AsyncStorage.removeItem('currentLocation')
     Platform.OS === 'android' &&
       StatusBar.setBackgroundColor('transparent', true);
@@ -102,7 +102,7 @@ export default class Main extends Component {
         if (!error) {
           if (result !== null) {
             const user = JSON.parse(result);
-            console.log(`${HOST_REST_API}user/${user.userPhone}`)
+            console.log(`${HOST_REST_API}user/${user.userPhone}`);
             fetch(`${HOST_REST_API}user/${user.userPhone}`)
               .then(res => res.json())
               .then(resolve)
@@ -197,7 +197,10 @@ export default class Main extends Component {
   render() {
     return (
       <View
-        style={{ flex: 1, backgroundColor: Color.white, position: 'relative' }}
+        style={{
+          flex: 1,
+          position: 'relative',
+        }}
       >
         <View
           style={[
@@ -217,33 +220,29 @@ export default class Main extends Component {
           style={{
             paddingHorizontal: 15,
             alignItems: 'center',
-            overflow: 'hidden',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 1,
-            backgroundColor: Color.white,
           }}
         >
-          <Image
-            style={[{ width: width }, { height: (3 / 4) * width }]}
-            resizeMode="cover"
-            source={require('../images/food-background.png')}
-          />
-          <Image
-            style={[
-              {
-                position: 'absolute',
-                top: '50%',
-                marginTop: -75,
-                width: 150,
-                height: 150,
-              },
-            ]}
-            resizeMode="contain"
-            source={require('../images/copek.png')}
-          />
+          <View
+            style={{
+              width: (1.5 / 4) * width,
+              height: (1.5 / 4) * width,
+              backgroundColor: Color.purple,
+              marginTop: (1 / 4) * width,
+              marginBottom: (1 / 4) * width,
+              borderRadius: 20,
+            }}
+          >
+            <Image
+              style={[
+                {
+                  width: '100%',
+                  height: '100%',
+                },
+              ]}
+              resizeMode="contain"
+              source={require('../images/copek.png')}
+            />
+          </View>
         </View>
         <View style={{ position: 'relative', flex: 1, zIndex: 1 }}>
           <ScrollView
@@ -251,20 +250,16 @@ export default class Main extends Component {
             bounces={false}
             scrollEventThrottle={16}
           >
-            <View
-              style={{
-                marginTop: (3 / 4) * width,
-              }}
-            >
+            <View>
               <View
                 style={[
                   {
-                    marginTop: -30,
                     flex: 1,
                     paddingVertical: 15,
                     paddingHorizontal: 0,
                     backgroundColor: Color.white,
-                    elevation: 20,
+                    borderWidth: 1, 
+                    borderColor: Color.borderColor,
                     marginHorizontal: 15,
                     borderRadius: 20,
                   },
@@ -311,7 +306,7 @@ export default class Main extends Component {
                           justifyContent: 'center',
                         }}
                       >
-                        <Icon color={Color.red} name='refresh' size={18} />
+                        <Icon color={Color.red} name="refresh" size={18} />
                       </View>
                     </TouchableHighlight>
                   </View>
@@ -335,7 +330,7 @@ export default class Main extends Component {
                     fa="motorcycle"
                     color={
                       this.state.ready && this.state.isLocationReady
-                        ? Color.blue
+                        ? Color.purple
                         : Color.grayLight
                     }
                     title="Ride"
@@ -352,7 +347,7 @@ export default class Main extends Component {
                     fa="utensils"
                     color={
                       this.state.ready && this.state.isLocationReady
-                        ? Color.primary
+                        ? Color.red
                         : Color.grayLight
                     }
                     title="Food"

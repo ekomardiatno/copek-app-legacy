@@ -282,8 +282,8 @@ class Home extends Component {
               </View>
               <TouchableHighlight
                 style={{ borderRadius: 5 }}
-                activeOpacity={0.85}
-                underlayColor="#fff"
+                activeOpacity={1}
+                underlayColor="transparent"
                 onPress={() => {
                   this._navigate('MapSelecting', null, {
                     selectLocation: this._selectLocation,
@@ -312,13 +312,14 @@ class Home extends Component {
                         overflow: 'hidden',
                         alignItems: 'center',
                         height: 20,
+                        gap: 10
                       },
                     ]}
                   >
                     <Text>Lokasimu</Text>
                     <Fa
                       iconStyle="solid"
-                      size={22}
+                      size={16}
                       color={Color.red}
                       name="chevron-down"
                     />
