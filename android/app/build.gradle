@@ -77,9 +77,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.copeklegacy"
+    namespace "com.koma.copek"
     defaultConfig {
-        applicationId "com.copeklegacy"
+        applicationId "com.koma.copek"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -117,3 +117,4 @@ dependencies {
         implementation jscFlavor
     }
 }
+apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"

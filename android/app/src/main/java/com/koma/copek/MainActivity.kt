@@ -1,4 +1,4 @@
-package com.copeklegacy
+package com.koma.copek
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

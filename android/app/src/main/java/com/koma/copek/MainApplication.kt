@@ -1,4 +1,4 @@
-package com.copeklegacy
+package com.koma.copek
 
 import android.app.Application
 import com.facebook.react.PackageList
