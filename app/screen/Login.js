@@ -9,8 +9,9 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  ActivityIndicator, TouchableHighlight,
-  SafeAreaView
+  ActivityIndicator,
+  TouchableHighlight,
+  SafeAreaView,
 } from 'react-native';
 import { Button } from '../components/Components';
 import Color, { colorYiq } from '../components/Color';
@@ -26,13 +27,19 @@ export default class Login extends Component {
       password: '',
       errorPhoneNumber: false,
       errorPassword: false,
+      errorOtp: false,
       errorPhoneNumberMessage: 'Wajib memasukkan nomor handphone',
       errorPasswordMessage: 'Wajib memasukkan password',
+      errorOtpMessage: 'Wajib memasukkan OTP',
       render: false,
       alertMsg: false,
       alertMsgText: 'Kombinasi nomor handphone dan password tidak ditemukan',
       isSigningIn: false,
       isSecurePass: true,
+      insertingOtp: false,
+      otp: '',
+      isVerifying: false,
+      user: null,
     };
   }
 
@@ -79,7 +86,6 @@ export default class Login extends Component {
         userPhone: phoneNumber,
         userPassword: password,
       };
-      console.log(`${HOST_REST_API}user/login`, data);
       try {
         const result = await fetch(`${HOST_REST_API}user/login`, {
           method: 'POST',
@@ -94,33 +100,38 @@ export default class Login extends Component {
         const json = await result.json();
         if (json.status === 'OK') {
           const user = json.data;
-          this.setState(
-            {
-              password: '',
-              phoneNumber: '',
-            },
-            () => {
-              AsyncStorage.setItem(
-                'user_logged_in',
-                JSON.stringify({
-                  userId: user.userId,
-                  userName: user.userName,
-                  userEmail: user.userEmail,
-                  userPhone: user.userPhone,
-                }),
-                error => {
-                  if (!error) {
-                    this.props.navigation.replace('Main');
-                  }
-                },
-              );
-            },
-          );
+          this.setState({
+            isSigningIn: false,
+            insertingOtp: true,
+            user,
+          });
         } else if (json.status === 'UNCONFIRMED') {
           this.setState({
             alertMsgText: 'Maaf akun Anda belum dikonfirmasi',
             alertMsg: true,
           });
+        } else if (json.status === 'UNABLE_TO_GET_OTP') {
+          Alert.alert(
+            'Gagal masuk',
+            'Terjadi kesalahan pada sistem, coba lagi nanti',
+            [
+              {
+                text: 'Coba lagi',
+                onPress: this._login,
+              },
+              {
+                text: 'Batal',
+                onPress: () => {
+                  this.setState({
+                    password: '',
+                    phoneNumber: '',
+                    isSigningIn: false,
+                  });
+                },
+              },
+            ],
+            { cancelable: false },
+          );
         } else {
           this.setState({
             alertMsgText: 'Nomor HP atau password tidak tepat',
@@ -174,6 +185,93 @@ export default class Login extends Component {
     });
   };
 
+  _otpChangeText = otp => {
+    this.setState({
+      otp,
+      errorOtp: false,
+      alertMsg: false,
+    });
+  };
+
+  _onVerify = async () => {
+    const { otp, phoneNumber } = this.state;
+    if (!otp) {
+      this.setState({ errorOtp: true });
+    }
+    this.setState({
+      isVerifying: true,
+    });
+    const data = {
+      userPhone: phoneNumber,
+      otp: otp,
+    };
+    try {
+      const result = await fetch(`${HOST_REST_API}user/otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      if (!result.ok) {
+        throw new Error('Failed to verify OTP');
+      }
+      const json = await result.json();
+      if (json.status === 'OK') {
+        const user = this.state.user;
+        AsyncStorage.setItem(
+          'user_logged_in',
+          JSON.stringify({
+            userId: user.userId,
+            userName: user.userName,
+            userEmail: user.userEmail,
+            userPhone: user.userPhone,
+          }),
+          error => {
+            if (!error) {
+              this.props.navigation.navigate('Main');
+            }
+          },
+        );
+      } else {
+        this.setState({
+          alertMsgText: 'OTP tidak tepat',
+          alertMsg: true,
+        });
+      }
+    } catch (e) {
+      console.log(e);
+      Alert.alert(
+        'OTP gagal',
+        'Terjadi kesalahan pada sistem, coba lagi nanti',
+        [
+          {
+            text: 'Coba lagi',
+            onPress: this._onVerify,
+          },
+          {
+            text: 'Batal',
+            onPress: () => {
+              this.setState({
+                otp: '',
+                isVerifying: false,
+              });
+            },
+          },
+        ],
+        { cancelable: false },
+      );
+    } finally {
+      this.setState({
+        isVerifying: false,
+        insertingOtp: false,
+        otp: '',
+        phoneNumber: '',
+        password: '',
+      });
+    }
+  };
+
   render() {
     const {
       phoneNumber,
@@ -186,6 +284,11 @@ export default class Login extends Component {
       alertMsg,
       alertMsgText,
       isSigningIn,
+      otp,
+      insertingOtp,
+      isVerifying,
+      errorOtp,
+      errorOtpMessage,
     } = this.state;
     return render ? (
       <View style={{ paddingTop: StatusBar.currentHeight, flex: 1 }}>
@@ -254,6 +357,7 @@ export default class Login extends Component {
                   </View>
                   <TextInput
                     value={phoneNumber}
+                    readOnly={insertingOtp}
                     onChangeText={this._phoneNumberChangeText}
                     placeholderTextColor={Color.gray}
                     placeholder="81234567890"
@@ -303,6 +407,7 @@ export default class Login extends Component {
                 >
                   <TextInput
                     value={password}
+                    readOnly={insertingOtp}
                     onChangeText={this._passwordChangeText}
                     autoCapitalize="none"
                     placeholder="••••••••"
@@ -370,17 +475,77 @@ export default class Login extends Component {
                   </Text>
                 )}
               </View>
-              {!isSigningIn ? (
-                <Button
-                  onPress={this._login}
-                  style={{ marginBottom: 15 }}
-                  blue
-                  title="Masuk"
-                />
+              {this.state.insertingOtp && (
+                <View style={{ marginBottom: 15 }}>
+                  <Text style={{ fontSize: 13 }}>OTP</Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      borderBottomWidth: 1,
+                      borderBottomColor: errorPassword
+                        ? Color.red
+                        : Color.borderColor,
+                    }}
+                  >
+                    <TextInput
+                      value={otp}
+                      maxLength={6}
+                      onChangeText={this._otpChangeText}
+                      autoCapitalize="none"
+                      placeholder="••••••"
+                      placeholderTextColor={Color.gray}
+                      style={{
+                        paddingHorizontal: 0,
+                        paddingVertical: 6,
+                        flex: 1,
+                        fontFamily: 'Yantramanav',
+                        letterSpacing: 5,
+                        color: Color.black,
+                        textAlign: 'center',
+                      }}
+                    />
+                  </View>
+                  {errorOtp && (
+                    <Text
+                      style={{ fontSize: 11, marginTop: 4, color: Color.red }}
+                    >
+                      {errorOtpMessage}
+                    </Text>
+                  )}
+                </View>
+              )}
+              {insertingOtp ? (
+                <>
+                  {isVerifying ? (
+                    <View
+                      style={{
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 3,
+                        paddingHorizontal: 15,
+                        height: 40,
+                        backgroundColor: Color.blue,
+                        elevation: 3,
+                      }}
+                    >
+                      <ActivityIndicator
+                        size={19}
+                        color={colorYiq(Color.blue)}
+                      />
+                    </View>
+                  ) : (
+                    <Button
+                      onPress={this._onVerify}
+                      title="Verifikasi OTP"
+                      blue
+                    />
+                  )}
+                </>
+              ) : !isSigningIn ? (
+                <Button onPress={this._login} blue title="Masuk" />
               ) : (
                 <View
                   style={{
-                    marginBottom: 15,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: 3,
@@ -393,18 +558,41 @@ export default class Login extends Component {
                   <ActivityIndicator size={19} color={colorYiq(Color.blue)} />
                 </View>
               )}
-              <View style={{ paddingHorizontal: 30, marginBottom: 15 }}>
+              <View style={{ paddingHorizontal: 30, marginTop: 10 }}>
                 <TouchableOpacity
                   activeOpacity={1}
-                  onPress={() => this.props.navigation.navigate('Forgot')}
+                  disabled={isSigningIn || isVerifying}
+                  onPress={() => {
+                    if (insertingOtp) {
+                      this.setState({
+                        insertingOtp: false,
+                        otp: '',
+                      });
+                      return;
+                    }
+                    this.props.navigation.navigate('Forgot');
+                  }}
                 >
-                  <View style={{ flexDirection: 'row' }}>
-                    <Text style={{ fontSize: 13, textAlign: 'center' }}>
-                      Lupa detail informasi masuk?{' '}
-                      <Text style={{ fontSize: 13, fontWeight: 'bold' }}>
-                        Dapatkan bantuan masuk.
+                  <View
+                    style={{ flexDirection: 'row', justifyContent: 'center' }}
+                  >
+                    {insertingOtp ? (
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          textAlign: 'center',
+                        }}
+                      >
+                        Masukkan ulang No. HP dan Kata Sandi
                       </Text>
-                    </Text>
+                    ) : (
+                      <Text style={{ fontSize: 13, textAlign: 'center' }}>
+                        Lupa detail informasi masuk?{' '}
+                        <Text style={{ fontSize: 13, fontWeight: 'bold' }}>
+                          Dapatkan bantuan masuk.
+                        </Text>
+                      </Text>
+                    )}
                   </View>
                 </TouchableOpacity>
               </View>
@@ -423,6 +611,7 @@ export default class Login extends Component {
           >
             <TouchableOpacity
               activeOpacity={1}
+              disabled={isSigningIn || isVerifying}
               onPress={() => this.props.navigation.navigate('Register')}
             >
               <View style={{ flexDirection: 'row' }}>
