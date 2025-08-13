@@ -135,7 +135,7 @@ export default class Register extends Component {
             </View>
             <View style={{ marginBottom: 15 }}>
               <Text style={{ fontSize: 13 }}>No. Handphone</Text>
-              <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Color.borderColor, marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Color.borderColor }}>
                 <View style={{ justifyContent: 'center', paddingRight: 8 }}>
                   <Text style={{ color: Color.gray, fontWeight: 'bold' }}>+62</Text>
                 </View>
@@ -144,17 +144,16 @@ export default class Register extends Component {
                   <Icon iconStyle='solid' color={Color.gray} name='mobile-alt' size={20} />
                 </View>
               </View>
-              <Text style={{ fontSize: 13, color: Color.textMuted }}>Mohon gunakan nomor HP yang benar agar driver dapat menghubungi Anda saat memproses pesanan</Text>
+              <Text style={{ fontSize: 13, color: Color.textMuted, paddingTop: 4, fontWeight: '300' }}>Pastikan nomor terdaftar di WhatsApp</Text>
             </View>
             <View style={{ marginBottom: 15 }}>
               <Text style={{ fontSize: 13 }}>Alamat Email</Text>
-              <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Color.borderColor, marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Color.borderColor }}>
                 <TextInput placeholderTextColor={Color.gray} value={this.state.email} onChangeText={text => this.setState({ email: text })} placeholder='ekomardiatno@domain.com' keyboardType='email-address' autoCapitalize='none' style={{ paddingHorizontal: 0, paddingVertical: 6, flex: 1, fontFamily: 'Yantramanav', color: Color.black, letterSpacing: 1 }} />
                 <View style={{ width: 40, alignItems: 'center', justifyContent: 'center' }}>
                   <Icon iconStyle='solid' color={Color.gray} name='at' size={20} />
                 </View>
               </View>
-              <Text style={{ fontSize: 13, color: Color.textMuted }}>Link konfirmasi pendaftaran akan dikirim melalui email, pastikan alamat email Anda sudah benar</Text>
             </View>
             <View style={{ marginBottom: 15 }}>
               <Text style={{ fontSize: 13 }}>Kata Sandi</Text>

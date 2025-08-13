@@ -134,12 +134,10 @@ export class Button extends Component {
     }
 
     return (
-      <TouchableHighlight
+      <TouchableOpacity
         onPress={this.props.onPress}
         underlayColor="rgba(0,0,0,1)"
         style={{
-          borderRadius: 3,
-          overflow: 'hidden',
           ...shadow,
         }}
       >
@@ -148,6 +146,7 @@ export class Button extends Component {
             backgroundColor: backgroundColor,
             borderWidth: borderWidth,
             borderColor: borderColor,
+            borderRadius: 5,
             paddingVertical: this.props.small ? 3.6 : 6,
             paddingHorizontal: this.props.small ? 7.2 : 12,
             minHeight: this.props.small ? 24 : 40,
@@ -168,7 +167,7 @@ export class Button extends Component {
             </Text>
           )}
         </View>
-      </TouchableHighlight>
+      </TouchableOpacity>
     );
   }
 }
@@ -486,7 +485,6 @@ export class ItemVertical extends Component {
             overflow: 'hidden',
             width: 140,
             height: 205,
-            marginBottom: 2,
             backgroundColor: Color.white,
           }}
         >

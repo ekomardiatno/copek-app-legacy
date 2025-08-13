@@ -48,8 +48,8 @@ export default function CustomTabBar({
               name={
                 label === 'Home'
                   ? 'home'
-                  : label === 'Profile'
-                  ? 'user'
+                  : label === 'History'
+                  ? 'book'
                   : label === 'Settings'
                   ? 'cog'
                   : 'circle'
@@ -67,7 +67,7 @@ export default function CustomTabBar({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: Color.secondary,
+    backgroundColor: Color.purple,
     height: 60,
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: Color.white,
-    opacity: 0.3,
+    opacity: 0.5,
   },
   activeText: {
     color: Color.white,

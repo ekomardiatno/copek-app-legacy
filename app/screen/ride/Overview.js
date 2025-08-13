@@ -2,8 +2,7 @@ import { Component } from 'react';
 import {
   View,
   Text,
-  StatusBar, Image,
-  Alert,
+  StatusBar, Alert,
   ToastAndroid,
   Platform,
   TouchableHighlight,
@@ -385,6 +384,7 @@ class Overview extends Component {
   };
 
   render() {
+    console.log(this.state.origin);
     return (
       <View style={{ flex: 1, backgroundColor: Color.grayLighter }}>
         <SimpleHeader
@@ -413,25 +413,11 @@ class Overview extends Component {
               bottom: 271 + 50,
             }}
           >
-            {this.state.origin != null ? (
-              <Marker coordinate={this.state.origin.geometry}>
-                <View style={{ width: 60, height: 60 }}>
-                  <Image
-                    style={{ width: '100%', height: '100%' }}
-                    source={require('../../images/icons/passenger-marker.png')}
-                  />
-                </View>
-              </Marker>
+            {this.state.origin !== null ? (
+              <Marker coordinate={this.state.origin.geometry} image={require('../../images/icons/passenger-marker.png')} />
             ) : null}
-            {this.state.destination != null ? (
-              <Marker coordinate={this.state.destination.geometry}>
-                <View style={{ width: 60, height: 60 }}>
-                  <Image
-                    style={{ width: '100%', height: '100%' }}
-                    source={require('../../images/icons/destination-marker.png')}
-                  />
-                </View>
-              </Marker>
+            {this.state.destination !== null ? (
+              <Marker coordinate={this.state.destination.geometry} image={require('../../images/icons/destination-marker.png')} />
             ) : null}
             <Direction
               coordinates={this.state.coords}

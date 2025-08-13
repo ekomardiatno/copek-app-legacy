@@ -46,7 +46,7 @@ function MainScreen() {
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Home" component={MainTab} />
-      <Tab.Screen name="Profile" component={HistoryTab} />
+      <Tab.Screen name="History" component={HistoryTab} />
       <Tab.Screen name="Settings" component={AccountTab} />
     </Tab.Navigator>
   );
