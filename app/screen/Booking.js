@@ -9,11 +9,12 @@ import {
   StatusBar,
   Alert,
   AppState,
-  Animated, Linking,
+  Animated,
+  Linking,
   ActivityIndicator,
   Platform,
   TouchableHighlight,
-  SafeAreaView
+  SafeAreaView,
 } from 'react-native';
 import MapView, {
   PROVIDER_GOOGLE,
@@ -24,8 +25,8 @@ import MapView, {
 import {
   LATITUDE_DELTA,
   LONGITUDE_DELTA,
-  NODE_APP_URL,
   HOST_REST_API,
+  WEB_APP_HOST,
 } from '../components/Define';
 import Color, { colorYiq } from '../components/Color';
 import {
@@ -112,7 +113,11 @@ class Booking extends Component {
         dataOrder.status !== 'cancelled_by_driver')
     ) {
       let socket = io(
-        `${NODE_APP_URL}`,
+        `${WEB_APP_HOST}`,
+        {
+          path: '/copek-node/socket.io',
+          transports: ['websocket'],
+        },
         // {
         //   autoConnect: false,
         //   reconnectionDelay: 1000,
