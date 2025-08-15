@@ -2,12 +2,13 @@ import { Component } from 'react';
 import {
   View,
   Text,
-  StatusBar, Alert,
+  StatusBar,
+  Alert,
   ToastAndroid,
   Platform,
   TouchableHighlight,
   SafeAreaView,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import Fa from '@react-native-vector-icons/fontawesome5';
 import Color, { colorYiq } from '../../components/Color';
@@ -362,17 +363,20 @@ class Overview extends Component {
             filtered = filtered.map(a => {
               return a.orderId;
             });
-            fetch(`${HOST_REST_API}order/checking`, {
-              method: 'post',
-              headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(filtered),
-            })
-              .then(res => res.json())
-              .then(resolve)
-              .catch(reject);
+            AsyncStorage.getItem('token').then(v => {
+              fetch(`${HOST_REST_API}order/checking`, {
+                method: 'post',
+                headers: {
+                  Accept: 'application/json',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(filtered),
+                Authorization: `Bearer ${v}`,
+              })
+                .then(res => res.json())
+                .then(resolve)
+                .catch(reject);
+            });
           } else {
             resolve([]);
           }
@@ -414,10 +418,16 @@ class Overview extends Component {
             }}
           >
             {this.state.origin !== null ? (
-              <Marker coordinate={this.state.origin.geometry} image={require('../../images/icons/passenger-marker.png')} />
+              <Marker
+                coordinate={this.state.origin.geometry}
+                image={require('../../images/icons/passenger-marker.png')}
+              />
             ) : null}
             {this.state.destination !== null ? (
-              <Marker coordinate={this.state.destination.geometry} image={require('../../images/icons/destination-marker.png')} />
+              <Marker
+                coordinate={this.state.destination.geometry}
+                image={require('../../images/icons/destination-marker.png')}
+              />
             ) : null}
             <Direction
               coordinates={this.state.coords}

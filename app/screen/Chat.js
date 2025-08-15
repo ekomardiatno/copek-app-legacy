@@ -3,14 +3,15 @@ import { Component } from 'react';
 import {
   View,
   Text,
-  ScrollView, Image,
+  ScrollView,
+  Image,
   TextInput,
   StatusBar,
   Linking,
   Alert,
   Platform,
   TouchableHighlight,
-  SafeAreaView
+  SafeAreaView,
 } from 'react-native';
 import Fa from '@react-native-vector-icons/fontawesome5';
 import Color, { colorYiq } from '../components/Color';
@@ -97,48 +98,54 @@ export default class Chat extends Component {
   _getChats = () => {
     const { orderId } = this.state;
     if (orderId !== null) {
-      fetch(`${HOST_REST_API}chat/history/${orderId}`)
-        .then(res => res.json())
-        .then(chat => {
-          if (chat.status === 'OK' && chat.data.length > 0) {
-            chat = chat.data;
-            this.setState(
-              {
-                chats: chat,
-              },
-              () => {
-                AsyncStorage.getItem('chats', (err, res) => {
-                  if (res !== null) {
-                    res = JSON.parse(res);
-                    let chatArray = [];
-                    res.map(a => {
-                      a.orderId !== orderId && chatArray.push(a);
-                    });
-                    AsyncStorage.setItem(
-                      'chats',
-                      JSON.stringify(chatArray.concat(chat)),
-                    );
-                  } else {
-                    AsyncStorage.setItem('chats', JSON.stringify([chat]));
-                  }
-                });
-              },
-            );
-          }
+      AsyncStorage.getItem('token').then(v => {
+        fetch(`${HOST_REST_API}chat/history/${orderId}`, {
+          headers: {
+            Authorization: `Bearer ${v}`,
+          },
         })
-        .catch(err => {
-          Alert.alert(
-            'Gagal mendapatkan obrolan',
-            'Terjadi kesalahan pada sistem, coba lagi nanti',
-            [
-              {
-                text: 'Coba lagi',
-                onPress: this._getChats,
-              },
-            ],
-            { cancelable: true },
-          );
-        });
+          .then(res => res.json())
+          .then(chat => {
+            if (chat.status === 'OK' && chat.data.length > 0) {
+              chat = chat.data;
+              this.setState(
+                {
+                  chats: chat,
+                },
+                () => {
+                  AsyncStorage.getItem('chats', (err, res) => {
+                    if (res !== null) {
+                      res = JSON.parse(res);
+                      let chatArray = [];
+                      res.map(a => {
+                        a.orderId !== orderId && chatArray.push(a);
+                      });
+                      AsyncStorage.setItem(
+                        'chats',
+                        JSON.stringify(chatArray.concat(chat)),
+                      );
+                    } else {
+                      AsyncStorage.setItem('chats', JSON.stringify([chat]));
+                    }
+                  });
+                },
+              );
+            }
+          })
+          .catch(err => {
+            Alert.alert(
+              'Gagal mendapatkan obrolan',
+              'Terjadi kesalahan pada sistem, coba lagi nanti',
+              [
+                {
+                  text: 'Coba lagi',
+                  onPress: this._getChats,
+                },
+              ],
+              { cancelable: true },
+            );
+          });
+      });
     }
   };
 
@@ -168,54 +175,57 @@ export default class Chat extends Component {
   _onSendChat = () => {
     const { socket, chatText, driver, orderId } = this.state;
     if (chatText.length > 0) {
-      fetch(`${HOST_REST_API}chat/post`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderId: orderId,
-          sender: 'customer',
-          text: chatText,
-        }),
-      })
-        .then(res => res.json())
-        .then(chat => {
-          if (chat.status === 'OK') {
-            chat = chat.data;
-            this.setState(
-              {
-                chats: [
-                  ...this.state.chats,
-                  {
+      AsyncStorage.getItem('token').then(v => {
+        fetch(`${HOST_REST_API}chat/post`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${v}`,
+          },
+          body: JSON.stringify({
+            orderId: orderId,
+            sender: 'customer',
+            text: chatText,
+          }),
+        })
+          .then(res => res.json())
+          .then(chat => {
+            if (chat.status === 'OK') {
+              chat = chat.data;
+              this.setState(
+                {
+                  chats: [
+                    ...this.state.chats,
+                    {
+                      orderId: chat.orderId,
+                      sender: chat.sender,
+                      text: chat.text,
+                      dateTime: chat.dateTime,
+                    },
+                  ],
+                  chatText: '',
+                },
+                () => {
+                  this._saveOnStorage({
                     orderId: chat.orderId,
                     sender: chat.sender,
                     text: chat.text,
                     dateTime: chat.dateTime,
-                  },
-                ],
-                chatText: '',
-              },
-              () => {
-                this._saveOnStorage({
-                  orderId: chat.orderId,
-                  sender: chat.sender,
-                  text: chat.text,
-                  dateTime: chat.dateTime,
-                });
-                socket.emit('send_chat', {
-                  receiverId: driver.driverId,
-                  data: {
-                    orderId: chat.orderId,
-                    sender: chat.sender,
-                    text: chat.text,
-                    dateTime: chat.dateTime,
-                  },
-                });
-              },
-            );
-          }
-        });
+                  });
+                  socket.emit('send_chat', {
+                    receiverId: driver.driverId,
+                    data: {
+                      orderId: chat.orderId,
+                      sender: chat.sender,
+                      text: chat.text,
+                      dateTime: chat.dateTime,
+                    },
+                  });
+                },
+              );
+            }
+          });
+      });
     }
   };
 

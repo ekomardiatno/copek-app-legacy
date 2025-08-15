@@ -431,10 +431,16 @@ class Booking extends Component {
     return new Promise((resolve, reject) => {
       const { orderId } = this.state;
       if (orderId !== null) {
-        fetch(`${HOST_REST_API}order/${orderId}`)
-          .then(res => res.json())
-          .then(resolve)
-          .catch(reject);
+        AsyncStorage.getItem('token').then(v => {
+          fetch(`${HOST_REST_API}order/${orderId}`, {
+            headers: {
+              Authorization: `Bearer ${v}`,
+            },
+          })
+            .then(res => res.json())
+            .then(resolve)
+            .catch(reject);
+        });
       }
     });
   };
@@ -530,10 +536,16 @@ class Booking extends Component {
     return new Promise((resolve, reject) => {
       const { orderId } = this.state;
       if (orderId !== null) {
-        fetch(`${HOST_REST_API}chat/history/${orderId}`)
-          .then(res => res.json())
-          .then(resolve)
-          .catch(reject);
+        AsyncStorage.getItem('token').then(v => {
+          fetch(`${HOST_REST_API}chat/history/${orderId}`, {
+            headers: {
+              Authorization: `Bearer ${v}`,
+            },
+          })
+            .then(res => res.json())
+            .then(resolve)
+            .catch(reject);
+        });
       }
     });
   };
@@ -1126,16 +1138,19 @@ class Booking extends Component {
 
   _promisePostOrderToServer = data => {
     return new Promise((resolve, reject) => {
-      fetch(`${HOST_REST_API}order/post`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-        .then(res => res.json())
-        .then(resolve)
-        .catch(reject);
+      AsyncStorage.getItem('token').then(v => {
+        fetch(`${HOST_REST_API}order/post`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${v}`,
+          },
+          body: JSON.stringify(data),
+        })
+          .then(res => res.json())
+          .then(resolve)
+          .catch(reject);
+      });
     });
   };
 
@@ -1147,65 +1162,68 @@ class Booking extends Component {
       () => {
         const { driver, orderId, carts } = this.state;
         const status = 'cancelled_by_user';
-        fetch(`${HOST_REST_API}order/status`, {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            orderId: orderId,
-            status: status,
-          }),
-        })
-          .then(res => res.json())
-          .then(res => {
-            if (res.status === 'OK') {
-              AsyncStorage.getItem('orders', (err, order) => {
-                if (order !== null) {
-                  order = JSON.parse(order);
-                  let index = order
-                    .map(item => {
-                      return item.orderId;
-                    })
-                    .indexOf(orderId.toString());
-                  order[index].status = status;
-                  AsyncStorage.setItem('orders', JSON.stringify(order));
-                }
-              });
-              if (driver != null) {
-                if (this.socket) {
-                  this.socket.emit('send_order_cancellation', {
-                    receiverId: driver.driverId,
-                    data: 'by_user',
-                  });
-                }
-              }
-              if (Platform.OS === 'android') {
-                ToastAndroid.show('Pesanan dibatalkan', ToastAndroid.SHORT);
-              } else {
-                Toast.show('Pesanan dibatalkan', Toast.SHORT);
-              }
-              this.props.navigation.goBack();
-            } else {
-              this.setState({
-                cancelling: false,
-              });
-            }
+        AsyncStorage.getItem('token').then(v => {
+          fetch(`${HOST_REST_API}order/status`, {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json',
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${v}`,
+            },
+            body: JSON.stringify({
+              orderId: orderId,
+              status: status,
+            }),
           })
-          .catch(err => {
-            Alert.alert(
-              'Gagal membatalkan pesanan',
-              'Terjadi kesalahan pada sistem, coba lagi nanti',
-              [
-                {
-                  text: 'Coba lagi',
-                  onPress: this._cancelOrder,
-                },
-              ],
-              { cancelable: true },
-            );
-          });
+            .then(res => res.json())
+            .then(res => {
+              if (res.status === 'OK') {
+                AsyncStorage.getItem('orders', (err, order) => {
+                  if (order !== null) {
+                    order = JSON.parse(order);
+                    let index = order
+                      .map(item => {
+                        return item.orderId;
+                      })
+                      .indexOf(orderId.toString());
+                    order[index].status = status;
+                    AsyncStorage.setItem('orders', JSON.stringify(order));
+                  }
+                });
+                if (driver != null) {
+                  if (this.socket) {
+                    this.socket.emit('send_order_cancellation', {
+                      receiverId: driver.driverId,
+                      data: 'by_user',
+                    });
+                  }
+                }
+                if (Platform.OS === 'android') {
+                  ToastAndroid.show('Pesanan dibatalkan', ToastAndroid.SHORT);
+                } else {
+                  Toast.show('Pesanan dibatalkan', Toast.SHORT);
+                }
+                this.props.navigation.goBack();
+              } else {
+                this.setState({
+                  cancelling: false,
+                });
+              }
+            })
+            .catch(err => {
+              Alert.alert(
+                'Gagal membatalkan pesanan',
+                'Terjadi kesalahan pada sistem, coba lagi nanti',
+                [
+                  {
+                    text: 'Coba lagi',
+                    onPress: this._cancelOrder,
+                  },
+                ],
+                { cancelable: true },
+              );
+            });
+        });
       },
     );
   };

@@ -13,6 +13,7 @@ import { SimpleHeader, Items, DummyItems } from '../../components/Components';
 import Color from '../../components/Color';
 import cancellablePromise from '../../helpers/cancellablePromise';
 import { HOST_REST_API } from '../../components/Define';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default class ListMerchant extends Component {
   timeoutFetch;
@@ -126,12 +127,19 @@ export default class ListMerchant extends Component {
     if (this.props.route.params?.data) {
       const { cityName, position, orderBy } = this.props.route.params.data;
       return new Promise((resolve, reject) => {
-        fetch(
-          `${HOST_REST_API}merchant/get?kota=${cityName}&koordinat=${position.latitude},${position.longitude}&page=${page}&orderby=${orderBy}`,
-        )
-          .then(res => res.json())
-          .then(resolve)
-          .catch(reject);
+        AsyncStorage.getItem('token').then(v => {
+          fetch(
+            `${HOST_REST_API}merchant/get?kota=${cityName}&koordinat=${position.latitude},${position.longitude}&page=${page}&orderby=${orderBy}`,
+            {
+              headers: {
+                Authorization: `Bearer ${v}`,
+              },
+            },
+          )
+            .then(res => res.json())
+            .then(resolve)
+            .catch(reject);
+        });
       });
     }
   };

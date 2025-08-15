@@ -14,6 +14,7 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import Navigation from './app/Navigation';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
   const requestLocationPermission = useCallback(async () => {
@@ -36,7 +37,12 @@ export default function App() {
 
   const checkVersion = useCallback(async () => {
     try {
-      const result = await fetch(`${HOST_REST_API}app-version/copek`);
+      const token = await AsyncStorage.getItem('token')
+      const result = await fetch(`${HOST_REST_API}app-version/copek`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       if (!result.ok) {
         throw new Error('Failed to get version list');
       }
