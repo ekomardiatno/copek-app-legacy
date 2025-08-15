@@ -32,6 +32,11 @@ export default class Account extends Component {
   }
 
   _logout = () => {
+    AsyncStorage.removeItem('cart')
+    AsyncStorage.removeItem('orders')
+    AsyncStorage.removeItem('chats')
+    AsyncStorage.removeItem('token')
+    AsyncStorage.removeItem('fare')
     AsyncStorage.removeItem('user_logged_in', error => {
       if (!error) {
         this.props.navigation.replace('Login');
