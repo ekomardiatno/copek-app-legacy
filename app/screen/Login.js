@@ -100,6 +100,7 @@ export default class Login extends Component {
         const json = await result.json();
         if (json.status === 'OK') {
           const user = json.data;
+          AsyncStorage.setItem('token', json.token)
           this.setState({
             isSigningIn: false,
             insertingOtp: true,

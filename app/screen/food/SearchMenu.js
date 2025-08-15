@@ -2,20 +2,18 @@
 import { Component } from 'react';
 import {
   View,
-  Text, Alert,
+  Text,
+  Alert,
   ActivityIndicator,
   StatusBar,
   Platform,
-  ScrollView
+  ScrollView,
 } from 'react-native';
-import {
-  Items,
-  DummyItems,
-  Input
-} from '../../components/Components';
+import { Items, DummyItems, Input } from '../../components/Components';
 import Color from '../../components/Color';
 import cancellablePromise from '../../helpers/cancellablePromise';
 import { HOST_REST_API } from '../../components/Define';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default class SearchMenu extends Component {
   timeoutFetch;
@@ -45,10 +43,7 @@ export default class SearchMenu extends Component {
 
   componentWillUnmount() {
     if (this.props.route.params?.statusbar) {
-      StatusBar.setBarStyle(
-        this.props.route.params?.statusbar.barStyle,
-        true,
-      );
+      StatusBar.setBarStyle(this.props.route.params?.statusbar.barStyle, true);
       Platform.OS === 'android' &&
         StatusBar.setBackgroundColor(
           this.props.route.params?.statusbar.background,
@@ -118,14 +113,14 @@ export default class SearchMenu extends Component {
               },
             },
           ],
-          {cancelable: false},
+          { cancelable: false },
         );
       });
   };
 
   _search = search => {
     clearTimeout(this.timeoutFetch);
-    this.setState({search}, () => {
+    this.setState({ search }, () => {
       if (this.state.search !== '') {
         this.timeoutFetch = setTimeout(() => {
           this.setState(
@@ -148,19 +143,24 @@ export default class SearchMenu extends Component {
   };
 
   _promiseFetch = () => {
-    let {page, search} = this.state;
-    let {cityName, position} = this.props.route.params?.data;
+    let { page, search } = this.state;
+    let { cityName, position } = this.props.route.params?.data;
     cityName = encodeURI(cityName);
     search = encodeURI(search);
     return new Promise((resolve, reject) => {
-      fetch(
-        `${HOST_REST_API}food/get?cari=${search}&koordinat=${
-          position.latitude
-        },${position.longitude}&orderby=nearest&kota=${cityName}&page=${page}`,
-      )
-        .then(res => res.json())
-        .then(resolve)
-        .catch(reject);
+      AsyncStorage.getItem('token').then(v => {
+        fetch(
+          `${HOST_REST_API}food/get?cari=${search}&koordinat=${position.latitude},${position.longitude}&orderby=nearest&kota=${cityName}&page=${page}`,
+          {
+            headers: {
+              Authorization: `Bearer ${v}`,
+            },
+          },
+        )
+          .then(res => res.json())
+          .then(resolve)
+          .catch(reject);
+      });
     });
   };
 
@@ -175,14 +175,8 @@ export default class SearchMenu extends Component {
   };
 
   render() {
-    const {
-      data,
-      page,
-      isAbleToScroll,
-      isFetchReached,
-      scrolling,
-      status,
-    } = this.state;
+    const { data, page, isAbleToScroll, isFetchReached, scrolling, status } =
+      this.state;
     const isCloseToBottom = ({
       layoutMeasurement,
       contentOffset,
@@ -196,21 +190,21 @@ export default class SearchMenu extends Component {
     };
 
     return (
-      <View style={{flex: 1}}>
-        <View
-          style={{elevation: 1, backgroundColor: Color.white}}>
+      <View style={{ flex: 1 }}>
+        <View style={{ elevation: 1, backgroundColor: Color.white }}>
           <View
             style={{
               paddingTop: StatusBar.currentHeight + 10,
               paddingBottom: 10,
               backgroundColor: Color.white,
-            }}>
+            }}
+          >
             <Input
               autoFocus
               onChangeText={this._search}
               feather
               icon="search"
-              style={{marginHorizontal: 15, marginBottom: 10}}
+              style={{ marginHorizontal: 15, marginBottom: 10 }}
               placeholder="Mau makan apa hari ini?"
             />
           </View>
@@ -220,11 +214,11 @@ export default class SearchMenu extends Component {
             bounces={false}
             onScrollBeginDrag={() => {
               this.setState({
-                isAbleToScroll: true
-              })
+                isAbleToScroll: true,
+              });
             }}
             scrollEventThrottle={16}
-            onMomentumScrollEnd={({nativeEvent}) => {
+            onMomentumScrollEnd={({ nativeEvent }) => {
               if (isCloseToBottom(nativeEvent)) {
                 !isFetchReached &&
                   scrolling &&
@@ -234,7 +228,7 @@ export default class SearchMenu extends Component {
                     },
                     () => {
                       this.timeoutFetch = setTimeout(
-                        function() {
+                        function () {
                           this.setState(
                             {
                               page: page + 1,
@@ -254,20 +248,22 @@ export default class SearchMenu extends Component {
                   scrolling: true,
                 });
               }
-            }}>
+            }}
+          >
             <Items
               headless={true}
               navigate={this._navigate}
               category="food"
               product={data}
             />
-            {(isAbleToScroll && !isFetchReached) && (
+            {isAbleToScroll && !isFetchReached && (
               <View
                 style={{
                   padding: 15,
                   alignItems: 'center',
                   justifyContent: 'center',
-                }}>
+                }}
+              >
                 <ActivityIndicator size="large" color={Color.success} />
               </View>
             )}
@@ -281,8 +277,9 @@ export default class SearchMenu extends Component {
               alignItems: 'center',
               justifyContent: 'center',
               paddingHorizontal: 30,
-            }}>
-            <Text style={{fontSize: 20, fontWeight: 'bold', marginBottom: 6}}>
+            }}
+          >
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 6 }}>
               Yah tidak ketemu
             </Text>
             <Text
@@ -290,7 +287,8 @@ export default class SearchMenu extends Component {
                 textAlign: 'center',
                 lineHeight: 18,
                 color: Color.textMuted,
-              }}>
+              }}
+            >
               Maaf kami tidak dapat menemukan menu yang anda cari
             </Text>
           </View>
@@ -302,8 +300,9 @@ export default class SearchMenu extends Component {
               alignItems: 'center',
               justifyContent: 'center',
               paddingHorizontal: 30,
-            }}>
-            <Text style={{fontSize: 20, fontWeight: 'bold', marginBottom: 6}}>
+            }}
+          >
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 6 }}>
               Mau makan apa?
             </Text>
             <Text
@@ -311,7 +310,8 @@ export default class SearchMenu extends Component {
                 textAlign: 'center',
                 lineHeight: 18,
                 color: Color.textMuted,
-              }}>
+              }}
+            >
               Cari resto dan menu favoritmu disini
             </Text>
           </View>

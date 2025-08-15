@@ -32,6 +32,7 @@ import cancellablePromise from '../../helpers/cancellablePromise';
 import { HOST_REST_API } from '../../components/Define';
 import getImageThumb from '../../helpers/getImageThumb';
 import Toast from 'react-native-simple-toast';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const { width, height } = Dimensions.get('window');
 
 export default class Merchant extends Component {
@@ -64,7 +65,7 @@ export default class Merchant extends Component {
   };
 
   componentWillUnmount() {
-    this.backHandler?.remove()
+    this.backHandler?.remove();
     if (this.props.route.params?.statusbar) {
       StatusBar.setBarStyle(this.props.route.params?.statusbar.barStyle, true);
       Platform.OS === 'android' &&
@@ -89,9 +90,12 @@ export default class Merchant extends Component {
     Platform.OS === 'android' &&
       StatusBar.setBackgroundColor('transparent', true);
     StatusBar.setBarStyle('light-content', true);
-    this.backHandler = BackHandler.addEventListener('hardwareBackPress', this._handleBackPress);
-    if(this.props.route.params?.data.position) {
-      this._fetchDataMerchant()
+    this.backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      this._handleBackPress,
+    );
+    if (this.props.route.params?.data.position) {
+      this._fetchDataMerchant();
     } else {
       this._getLocation();
     }
@@ -266,19 +270,31 @@ export default class Merchant extends Component {
 
   _promiseFoods = merchantId => {
     return new Promise((resolve, reject) => {
-      fetch(`${HOST_REST_API}food/${merchantId}`)
-        .then(res => res.json())
-        .then(resolve)
-        .catch(reject);
+      AsyncStorage.getItem('token').then(v => {
+        fetch(`${HOST_REST_API}food/${merchantId}`, {
+          headers: {
+            Authorization: `Bearer ${v}`,
+          },
+        })
+          .then(res => res.json())
+          .then(resolve)
+          .catch(reject);
+      });
     });
   };
 
   _promiseMerchant = merchantId => {
     return new Promise((resolve, reject) => {
-      fetch(`${HOST_REST_API}merchant/${merchantId}`)
-        .then(res => res.json())
-        .then(resolve)
-        .catch(reject);
+      AsyncStorage.getItem('token').then(v => {
+        fetch(`${HOST_REST_API}merchant/${merchantId}`, {
+          headers: {
+            Authorization: `Bearer ${v}`,
+          },
+        })
+          .then(res => res.json())
+          .then(resolve)
+          .catch(reject);
+      });
     });
   };
 

@@ -2,7 +2,8 @@ import { Component } from 'react';
 import {
   View,
   Text,
-  StatusBar, Image,
+  StatusBar,
+  Image,
   Alert,
   BackHandler,
   ToastAndroid,
@@ -10,7 +11,7 @@ import {
   TouchableHighlight,
   SafeAreaView,
   ActivityIndicator,
-  ScrollView
+  ScrollView,
 } from 'react-native';
 import Feather from '@react-native-vector-icons/feather';
 import Fa from '@react-native-vector-icons/fontawesome5';
@@ -364,10 +365,16 @@ export default class Order extends Component {
 
   _promiseMerchant = merchantId => {
     return new Promise((resolve, reject) => {
-      fetch(`${HOST_REST_API}merchant/${merchantId}`)
-        .then(res => res.json())
-        .then(resolve)
-        .catch(reject);
+      AsyncStorage.getItem('token').then(v => {
+        fetch(`${HOST_REST_API}merchant/${merchantId}`, {
+          headers: {
+            Authorization: `Bearer ${v}`,
+          },
+        })
+          .then(res => res.json())
+          .then(resolve)
+          .catch(reject);
+      });
     });
   };
 
@@ -576,17 +583,20 @@ export default class Order extends Component {
             filtered = filtered.map(a => {
               return a.orderId;
             });
-            fetch(`${HOST_REST_API}order/checking`, {
-              method: 'post',
-              headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(filtered),
-            })
-              .then(res => res.json())
-              .then(resolve)
-              .catch(reject);
+            AsyncStorage.getItem('token').then(v => {
+              fetch(`${HOST_REST_API}order/checking`, {
+                method: 'post',
+                headers: {
+                  Accept: 'application/json',
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${v}`,
+                },
+                body: JSON.stringify(filtered),
+              })
+                .then(res => res.json())
+                .then(resolve)
+                .catch(reject);
+            });
           } else {
             resolve([]);
           }

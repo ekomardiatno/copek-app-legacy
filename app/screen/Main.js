@@ -102,11 +102,16 @@ export default class Main extends Component {
         if (!error) {
           if (result !== null) {
             const user = JSON.parse(result);
-            console.log(`${HOST_REST_API}user/${user.userPhone}`);
-            fetch(`${HOST_REST_API}user/${user.userPhone}`)
-              .then(res => res.json())
-              .then(resolve)
-              .catch(reject);
+            AsyncStorage.getItem('token').then(v => {
+              fetch(`${HOST_REST_API}user/${user.userPhone}`, {
+                headers: {
+                  Authorization: `Bearer ${v}`,
+                },
+              })
+                .then(res => res.json())
+                .then(resolve)
+                .catch(reject);
+            });
           }
         }
       });
@@ -187,10 +192,16 @@ export default class Main extends Component {
 
   _promiseFareSettings = () => {
     return new Promise((resolve, reject) => {
-      fetch(`${HOST_REST_API}fare`)
-        .then(res => res.json())
-        .then(resolve)
-        .catch(reject);
+      AsyncStorage.getItem('token').then(v => {
+        fetch(`${HOST_REST_API}fare`, {
+          headers: {
+            Authorization: `Bearer ${v}`,
+          },
+        })
+          .then(res => res.json())
+          .then(resolve)
+          .catch(reject);
+      });
     });
   };
 
@@ -258,7 +269,7 @@ export default class Main extends Component {
                     paddingVertical: 15,
                     paddingHorizontal: 0,
                     backgroundColor: Color.white,
-                    borderWidth: 1, 
+                    borderWidth: 1,
                     borderColor: Color.borderColor,
                     marginHorizontal: 15,
                     borderRadius: 20,

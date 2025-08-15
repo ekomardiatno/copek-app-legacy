@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Platform,
   TouchableHighlight,
-  ScrollView
+  ScrollView,
 } from 'react-native';
 import {
   SliderCard,
@@ -29,6 +29,7 @@ import {
 import cancellablePromise from '../../helpers/cancellablePromise';
 import { getCart } from '../../actions/carts.actions';
 import { HOST_REST_API } from '../../components/Define';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const { width, height } = Dimensions.get('window');
 
 class Home extends Component {
@@ -200,12 +201,19 @@ class Home extends Component {
   _promiseCollection = (currentLocation, position) => {
     return new Promise((resolve, reject) => {
       const cityName = encodeURI(currentLocation.cityName);
-      fetch(
-        `${HOST_REST_API}food/collection?kota=${cityName}&koordinat=${position.latitude},${position.longitude}`,
-      )
-        .then(res => res.json())
-        .then(resolve)
-        .catch(reject);
+      AsyncStorage.getItem('token').then(v => {
+        fetch(
+          `${HOST_REST_API}food/collection?kota=${cityName}&koordinat=${position.latitude},${position.longitude}`,
+          {
+            headers: {
+              Authorization: `Bearer ${v}`,
+            },
+          },
+        )
+          .then(res => res.json())
+          .then(resolve)
+          .catch(reject);
+      });
     });
   };
 
@@ -312,7 +320,7 @@ class Home extends Component {
                         overflow: 'hidden',
                         alignItems: 'center',
                         height: 20,
-                        gap: 10
+                        gap: 10,
                       },
                     ]}
                   >
