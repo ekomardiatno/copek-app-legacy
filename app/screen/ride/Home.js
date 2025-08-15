@@ -76,6 +76,8 @@ class Home extends Component {
       'hardwareBackPress',
       this._handleBackPress,
     );
+
+    this._setInitialLocation();
   }
 
   componentWillUnmount() {
@@ -98,6 +100,9 @@ class Home extends Component {
     this.setState({
       errorLocation: false,
     });
+  };
+
+  _setInitialLocation = () => {
     const wrappedPromise = cancellablePromise(getCurrentPosition());
     const { origin, currentLocation } = this.state;
     this.appendPendingPromise(wrappedPromise);
@@ -334,12 +339,24 @@ class Home extends Component {
   };
 
   _changeLocation = (latitude, longitude) => {
-    this._mapView.animateToRegion({
-      latitude: latitude,
-      longitude: longitude,
-      latitudeDelta: LATITUDE_DELTA,
-      longitudeDelta: LONGITUDE_DELTA,
-    });
+    this.setState(
+      {
+        region: {
+          latitude: latitude,
+          longitude: longitude,
+          latitudeDelta: LATITUDE_DELTA,
+          longitudeDelta: LONGITUDE_DELTA,
+        },
+      },
+      () => {
+        this._mapView.animateToRegion({
+          latitude: latitude,
+          longitude: longitude,
+          latitudeDelta: LATITUDE_DELTA,
+          longitudeDelta: LONGITUDE_DELTA,
+        });
+      },
+    );
   };
 
   _toCurrentLocation = () => {
@@ -454,7 +471,7 @@ class Home extends Component {
             borderTopRightRadius: 15,
           }}
         >
-          <View style={{ position: 'absolute', top: -91, left: 0, right: 0 }}>
+          <View style={{ position: 'absolute', top: -50, left: 0, right: 0 }}>
             <SimpleHeader
               goBack
               navigation={this.props.navigation}
@@ -468,7 +485,16 @@ class Home extends Component {
               rightComponent={
                 this.state.region != null ? (
                   <View>
-                    <TouchableHighlight activeOpacity={1} style={{ width: 40, height: 40, marginHorizontal: 5, borderRadius: 20 }} onPress={this._toCurrentLocation}>
+                    <TouchableHighlight
+                      activeOpacity={1}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        marginHorizontal: 5,
+                        borderRadius: 20,
+                      }}
+                      onPress={this._toCurrentLocation}
+                    >
                       <View
                         style={{
                           height: 40,

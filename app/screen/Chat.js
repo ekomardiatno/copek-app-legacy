@@ -20,8 +20,9 @@ import dateFormatted from '../helpers/dateFormatted';
 import { HOST_REST_API } from '../components/Define';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import getImageThumb from '../helpers/getImageThumb';
+import { withSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default class Chat extends Component {
+class Chat extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -244,8 +245,8 @@ export default class Chat extends Component {
   render() {
     let { chats, driver } = this.state;
     return (
-      <View style={{ flex: 1, paddingTop: StatusBar.currentHeight }}>
-        <View style={{ backgroundColor: Color.primary, elevation: 5 }}>
+      <View style={{ flex: 1, paddingBottom: this.props.insets.bottom }}>
+        <View style={{ backgroundColor: Color.primary, elevation: 5, paddingTop: this.props.insets.top, }}>
           <SafeAreaView>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ padding: 10, paddingLeft: 15 }}>
@@ -397,7 +398,7 @@ export default class Chat extends Component {
                       }}
                     >
                       <Fa
-                        iconStyle="solid"
+                        iconStyle="brand"
                         color={colorYiq(Color.secondary)}
                         size={16}
                         name="whatsapp"
@@ -510,7 +511,7 @@ export default class Chat extends Component {
                   );
                 } else {
                   return (
-                    <View>
+                    <View key={i}>
                       <View
                         key={i}
                         style={{
@@ -692,3 +693,5 @@ export default class Chat extends Component {
     );
   }
 }
+
+export default withSafeAreaInsets(Chat)

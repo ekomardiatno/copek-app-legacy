@@ -131,7 +131,7 @@ class Overview extends Component {
         this.removePendingPromise(wrappedPromise);
         this._mapView.fitToElements(true);
       })
-      .catch(error => {
+      .catch(_error => {
         Alert.alert(
           'Gagal mendapatkan rute',
           'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -171,7 +171,7 @@ class Overview extends Component {
       .then(() => {
         this.removePendingPromise(wrappedPromise);
       })
-      .catch(error => {
+      .catch(_error => {
         Alert.alert(
           'Gagal menghitung jarak',
           'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -198,7 +198,7 @@ class Overview extends Component {
       let points = Polyline.decode(
         directions.routes[0].overview_polyline.points,
       );
-      let coords = points.map((point, index) => {
+      let coords = points.map((point, _index) => {
         return {
           latitude: point[0],
           longitude: point[1],
@@ -268,7 +268,7 @@ class Overview extends Component {
       .then(res => {
         if (res.length > 0) {
           for (let i = 0; i < res.length; i++) {
-            AsyncStorage.getItem('orders', (err, order) => {
+            AsyncStorage.getItem('orders', (_err, order) => {
               if (order !== null) {
                 order = JSON.parse(order);
                 let index = order
@@ -281,7 +281,7 @@ class Overview extends Component {
                 } else {
                   order.splice(index, 1);
                 }
-                AsyncStorage.setItem('orders', JSON.stringify(order), error => {
+                AsyncStorage.setItem('orders', JSON.stringify(order), _error => {
                   if (i + 1 >= res.length) {
                     this._checkOrderUnfinishedAndBooking();
                   }
@@ -294,7 +294,7 @@ class Overview extends Component {
         }
       })
       .then(() => this.removePendingPromise(wrappedPromise))
-      .catch(err => {
+      .catch(_err => {
         Alert.alert(
           'Gagal membuat pesanan',
           'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -305,7 +305,7 @@ class Overview extends Component {
   _checkOrderUnfinishedAndBooking = () => {
     AsyncStorage.getItem(
       'orders',
-      async function (err, orders) {
+      async function (_err, orders) {
         let length = 0,
           array = [];
         if (orders !== null) {
