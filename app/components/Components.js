@@ -1294,7 +1294,7 @@ export class DashLine extends Component {
     );
   }
 }
-export class SimpleHeader extends Component {
+class SimpleHeaderRaw extends Component {
   render() {
     return (
       <View
@@ -1303,8 +1303,7 @@ export class SimpleHeader extends Component {
           paddingHorizontal: 15,
           paddingVertical: 10,
           marginHorizontal: -5,
-          paddingTop:
-            Platform.OS === 'android' ? 10 + StatusBar.currentHeight : 50,
+          paddingTop: this.props.insets.top,
           backgroundColor: Color.white,
           ...this.props.style,
         }}
@@ -1360,6 +1359,8 @@ export class SimpleHeader extends Component {
     );
   }
 }
+
+export const SimpleHeader = withSafeAreaInsets(SimpleHeaderRaw)
 
 export class BookingStatus extends Component {
   render() {
@@ -1779,7 +1780,7 @@ export class OrderHistoryItem extends Component {
                       paddingVertical: 1.5,
                     }}
                   >
-                    <Fa name="hashtag" />
+                    <Fa color={colorYiq(statusColor)} iconStyle='solid' name="hashtag" />
                     {statusText}
                   </Text>
                 </View>

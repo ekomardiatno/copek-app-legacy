@@ -14,6 +14,7 @@ import cancellablePromise from '../helpers/cancellablePromise';
 import { HOST_REST_API } from '../components/Define';
 
 export default class History extends Component {
+  screenFocused;
   constructor(props) {
     super(props);
     this.state = {
@@ -34,6 +35,11 @@ export default class History extends Component {
 
   componentDidMount() {
     this._getCheckOrderStatus();
+    this.screenFocused = this.props.navigation.addListener(
+      'focus', () => {
+        this._getData()
+      }
+    );
   }
 
   _getData = () => {
@@ -138,11 +144,11 @@ export default class History extends Component {
     this.pendingPromises.map(p => {
       this.removePendingPromise(p);
     });
+    if (this.screenFocused) this.screenFocused();
   }
 
   render() {
     const { orders, errorFetch } = this.state;
-    let estimatedPrice = 0;
     return (
       <View style={{ flex: 1 }}>
         <View style={[{ backgroundColor: Color.white }]}>
@@ -212,6 +218,9 @@ export default class History extends Component {
                   onPress={() =>
                     this.props.navigation.navigate('Booking', {
                       dataOrder: order,
+                      actionBack: () => {
+                        this._getData()
+                      }
                     })
                   }
                   key={order.orderId}
@@ -236,6 +245,9 @@ export default class History extends Component {
                   onPress={() =>
                     this.props.navigation.navigate('Booking', {
                       dataOrder: order,
+                      actionBack: () => {
+                        this._getData()
+                      }
                     })
                   }
                   key={order.orderId}

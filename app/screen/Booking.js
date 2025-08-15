@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-inline-styles */
 /* eslint-disable no-return-assign */
 import { Component } from 'react';
 import {
@@ -112,23 +113,10 @@ class Booking extends Component {
         dataOrder.status !== 'cancelled_by_user' &&
         dataOrder.status !== 'cancelled_by_driver')
     ) {
-      let socket = io(
-        `${WEB_APP_HOST}`,
-        {
-          path: '/copek-node/socket.io',
-          transports: ['websocket'],
-        },
-        // {
-        //   autoConnect: false,
-        //   reconnectionDelay: 1000,
-        //   reconnection: true,
-        //   transports: ['websocket'],
-        //   agent: false,
-        //   // [2] Please don't set this to true
-        //   upgrade: false,
-        //   rejectUnauthorized: false
-        // }
-      );
+      let socket = io(`${WEB_APP_HOST}`, {
+        path: '/copek-node/socket.io',
+        transports: ['websocket'],
+      });
       this.socket = socket;
       this.socket.on(
         'connect',
@@ -152,6 +140,35 @@ class Booking extends Component {
   }
 
   componentDidMount() {
+    const dataOrder = this.props.route.params?.dataOrder;
+    if (dataOrder === undefined) {
+      const merchant = this.props.route.params?.merchant;
+      const origin = this.props.route.params?.origin;
+      let originState = null;
+      if (merchant !== undefined) {
+        originState = {
+          geometry: {
+            latitude: merchant.merchantLatitude,
+            longitude: merchant.merchantLongitude,
+          },
+          geocode: {
+            title: merchant.merchantName,
+            address: merchant.merchantAddress,
+          },
+        };
+      } else if (origin !== undefined) {
+        originState = origin;
+      }
+      this.setState(
+        {
+          origin: originState,
+        },
+        () => {
+          this._getNearDriver();
+        },
+      );
+    }
+
     this.timerConnect = setTimeout(
       function () {
         this.setState({
@@ -259,7 +276,7 @@ class Booking extends Component {
             status: status,
           },
           () => {
-            AsyncStorage.getItem('orders', (err, order) => {
+            AsyncStorage.getItem('orders', (_err, order) => {
               if (order !== null) {
                 order = JSON.parse(order);
                 let index = order
@@ -293,7 +310,7 @@ class Booking extends Component {
     socket.on(
       `${receiverId}_receive_order_cancellation`,
       function () {
-        AsyncStorage.getItem('orders', (err, order) => {
+        AsyncStorage.getItem('orders', (_err, order) => {
           if (order !== null) {
             order = JSON.parse(order);
             let index = order
@@ -369,7 +386,7 @@ class Booking extends Component {
   };
 
   _saveChatOnStorage = data => {
-    AsyncStorage.getItem('chats', (error, chat) => {
+    AsyncStorage.getItem('chats', (_error, chat) => {
       if (chat !== null) {
         chat = JSON.parse(chat);
         chat.push(data);
@@ -393,7 +410,7 @@ class Booking extends Component {
             },
             () => {
               const { status } = this.state;
-              AsyncStorage.getItem('orders', (err, order) => {
+              AsyncStorage.getItem('orders', (_err, order) => {
                 if (order !== null) {
                   order = JSON.parse(order);
                   let index = order
@@ -412,7 +429,7 @@ class Booking extends Component {
       .then(() => {
         this.removePendingPromise(wrappedPromise);
       })
-      .catch(err => {
+      .catch(_err => {
         Alert.alert(
           'Gagal memperbarui status pesanan',
           'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -458,7 +475,7 @@ class Booking extends Component {
               chats: chat,
             },
             () => {
-              AsyncStorage.getItem('chats', (err, res) => {
+              AsyncStorage.getItem('chats', (_err, res) => {
                 if (res !== null) {
                   res = JSON.parse(res);
                   let chatArray = [];
@@ -517,7 +534,7 @@ class Booking extends Component {
       .then(() => {
         this.removePendingPromise(wrappedPromise);
       })
-      .catch(err => {
+      .catch(_err => {
         Alert.alert(
           'Gagal mendapatkan obrolan',
           'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -591,7 +608,6 @@ class Booking extends Component {
         () => {
           if (geometry !== null) {
             this._mapView.animateToRegion(geometry);
-            this._getNearDriver();
           }
         },
       );
@@ -637,7 +653,7 @@ class Booking extends Component {
         () => {
           AsyncStorage.getItem(
             'chats',
-            function (err, chat) {
+            function (_err, chat) {
               if (chat !== null) {
                 chat = JSON.parse(chat);
                 this.setState({
@@ -765,7 +781,7 @@ class Booking extends Component {
                   let points = Polyline.decode(
                     directions.routes[0].overview_polyline.points,
                   );
-                  let coords = points.map((point, index) => {
+                  let coords = points.map((point, _index) => {
                     return {
                       latitude: point[0],
                       longitude: point[1],
@@ -783,7 +799,7 @@ class Booking extends Component {
                 .then(() => {
                   this.removePendingPromise(wrappedPromise);
                 })
-                .catch(error => {
+                .catch(_error => {
                   Alert.alert(
                     'Gagal membuat rute',
                     'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -878,7 +894,7 @@ class Booking extends Component {
       .then(() => {
         this.removePendingPromise(wrappedPromise);
       })
-      .catch(error => {
+      .catch(_error => {
         Alert.alert(
           'Gagal mendapatkan driver',
           'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -923,7 +939,7 @@ class Booking extends Component {
       if (driverCandidate.length > 0 && driverCandidate[indexCandidate]) {
         this.socket.emit(
           'isConnected',
-          driverCandidate[indexCandidate].driverSocketId,
+          driverCandidate[indexCandidate].socketId,
           function (result) {
             if (result) {
               const driver = {
@@ -934,10 +950,10 @@ class Booking extends Component {
                 driverEmail: driverCandidate[indexCandidate].driverEmail,
                 driverPicture: driverCandidate[indexCandidate].driverPicture,
                 driverLatitude: Number(
-                  driverCandidate[indexCandidate].driverLatitude,
+                  driverCandidate[indexCandidate].location.coordinates[1],
                 ),
                 driverLongitude: Number(
-                  driverCandidate[indexCandidate].driverLongitude,
+                  driverCandidate[indexCandidate].location.coordinates[0],
                 ),
               };
               this.setState(
@@ -1081,7 +1097,7 @@ class Booking extends Component {
           note: note,
           date: dateString,
         };
-        if (res.status == 'OK') {
+        if (res.status === 'OK') {
           clearTimeout(this.timeOutPostOrder);
           this.socket.emit('send_response', {
             receiverId: driver.driverId,
@@ -1092,7 +1108,7 @@ class Booking extends Component {
               preventBack: false,
             },
             () => {
-              AsyncStorage.getItem('orders', (err, order) => {
+              AsyncStorage.getItem('orders', (_err, order) => {
                 if (order != null) {
                   order = JSON.parse(order);
                   order.push(sendData);
@@ -1120,7 +1136,7 @@ class Booking extends Component {
           }
         }
       })
-      .catch(err => {
+      .catch(_err => {
         if (Platform.OS === 'android') {
           ToastAndroid.show(
             'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -1178,16 +1194,18 @@ class Booking extends Component {
             .then(res => res.json())
             .then(res => {
               if (res.status === 'OK') {
-                AsyncStorage.getItem('orders', (err, order) => {
+                AsyncStorage.getItem('orders', (_err, order) => {
                   if (order !== null) {
                     order = JSON.parse(order);
-                    let index = order
-                      .map(item => {
-                        return item.orderId;
-                      })
-                      .indexOf(orderId.toString());
-                    order[index].status = status;
-                    AsyncStorage.setItem('orders', JSON.stringify(order));
+                    const newOrder = order.map(o => {
+                      if (o.orderId === orderId.toString())
+                        return {
+                          ...o,
+                          status,
+                        };
+                      return o;
+                    });
+                    AsyncStorage.setItem('orders', JSON.stringify(newOrder));
                   }
                 });
                 if (driver != null) {
@@ -1203,14 +1221,18 @@ class Booking extends Component {
                 } else {
                   Toast.show('Pesanan dibatalkan', Toast.SHORT);
                 }
+                if (this.props.route.params?.actionBack) {
+                  this.props.route.params?.actionBack();
+                }
                 this.props.navigation.goBack();
+
               } else {
                 this.setState({
                   cancelling: false,
                 });
               }
             })
-            .catch(err => {
+            .catch(_err => {
               Alert.alert(
                 'Gagal membatalkan pesanan',
                 'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -1305,14 +1327,8 @@ class Booking extends Component {
                   latitude: merchant.merchantLatitude,
                   longitude: merchant.merchantLongitude,
                 }}
-              >
-                <View style={{ width: 60, height: 60 }}>
-                  <Image
-                    style={{ width: '100%', height: '100%' }}
-                    source={require('../images/icons/resto-marker.png')}
-                  />
-                </View>
-              </Marker>
+                image={require('../images/icons/resto-marker.png')}
+              />
             )}
             {orderType === 'RIDE' && (
               <Marker
@@ -1320,27 +1336,15 @@ class Booking extends Component {
                   latitude: origin.geometry.latitude,
                   longitude: origin.geometry.longitude,
                 }}
-              >
-                <View style={{ width: 60, height: 60 }}>
-                  <Image
-                    style={{ width: '100%', height: '100%' }}
-                    source={require('../images/icons/passenger-marker.png')}
-                  />
-                </View>
-              </Marker>
+                image={require('../images/icons/passenger-marker.png')}
+              />
             )}
-            {driver != null && (
+            {driver !== null && driverCoord && (
               <Marker.Animated
                 ref={marker => (this.driverMarker = marker)}
                 coordinate={driverCoord}
-              >
-                <View style={{ width: 60, height: 60 }}>
-                  <Image
-                    style={{ width: '100%', height: '100%' }}
-                    source={require('../images/icons/driver-marker.png')}
-                  />
-                </View>
-              </Marker.Animated>
+                image={require('../images/icons/driver-marker.png')}
+              />
             )}
             {destinationMarker && (
               <Marker
@@ -1348,14 +1352,8 @@ class Booking extends Component {
                   latitude: destination.geometry.latitude,
                   longitude: destination.geometry.longitude,
                 }}
-              >
-                <View style={{ width: 60, height: 60 }}>
-                  <Image
-                    style={{ width: '100%', height: '100%' }}
-                    source={require('../images/icons/destination-marker.png')}
-                  />
-                </View>
-              </Marker>
+                image={require('../images/icons/destination-marker.png')}
+              />
             )}
             <Direction
               coordinates={polyline}
@@ -1575,7 +1573,7 @@ class Booking extends Component {
                           }}
                         >
                           <Fa
-                            iconStyle="solid"
+                            iconStyle="brand"
                             name="whatsapp"
                             size={16}
                             style={{ color: Color.white }}
