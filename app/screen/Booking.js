@@ -14,8 +14,7 @@ import {
   Linking,
   ActivityIndicator,
   Platform,
-  TouchableHighlight,
-  SafeAreaView,
+  TouchableHighlight
 } from 'react-native';
 import MapView, {
   PROVIDER_GOOGLE,
@@ -27,7 +26,6 @@ import {
   LATITUDE_DELTA,
   LONGITUDE_DELTA,
   HOST_REST_API,
-  WEB_APP_HOST,
 } from '../components/Define';
 import Color, { colorYiq } from '../components/Color';
 import {
@@ -40,19 +38,20 @@ import Fa from '@react-native-vector-icons/fontawesome5';
 import { getNearDrivers } from '../actions/drivers.actions';
 import { getDirections } from '../actions/locations.actions';
 import cancellablePromise from '../helpers/cancellablePromise';
-import io from 'socket.io-client';
 import Polyline from '@mapbox/polyline';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import phoneNumFormat from '../helpers/phoneNumFormat';
 import getImageThumb from '../helpers/getImageThumb';
 import Toast from 'react-native-simple-toast';
+import { SocketContext } from '../components/SocketProvider';
 
 class Booking extends Component {
+  static contextType = SocketContext;
   timer;
   timeoutPolyline;
   timeoutNextDriver;
-  timerConnect;
   backHandler;
+  appState;
   constructor(props) {
     super(props);
     this.state = {
@@ -101,43 +100,150 @@ class Booking extends Component {
       newChatLength: 0,
       opacityBoxNotif: new Animated.Value(0),
       cancelling: false,
-      isConnected: false,
       preventBack: true,
       readyConnect: false,
     };
+  }
 
-    const dataOrder = this.props.route.params?.dataOrder;
-    if (
-      dataOrder === undefined ||
-      (dataOrder.status !== 'completed' &&
-        dataOrder.status !== 'cancelled_by_user' &&
-        dataOrder.status !== 'cancelled_by_driver')
-    ) {
-      let socket = io(`${WEB_APP_HOST}`, {
-        path: '/copek-node/socket.io',
-        transports: ['websocket'],
-      });
-      this.socket = socket;
-      this.socket.on(
-        'connect',
-        function () {
-          clearTimeout(this.timerConnect);
-          this.setState({
-            isConnected: true,
-            readyConnect: true,
-          });
-        }.bind(this),
+  _handleReceiveResponse = status => {
+    clearTimeout(this.timeoutNextDriver);
+    if (status === 'ACCEPT') {
+      this.setState(
+        {
+          driver: this.state.driverTemporary,
+          driverCoord: new AnimatedRegion({
+            latitude: this.state.driverTemporary.driverLatitude,
+            longitude: this.state.driverTemporary.driverLongitude,
+            latitudeDelta: LATITUDE_DELTA,
+            longitudeDelta: LONGITUDE_DELTA,
+          }),
+        },
+        () => {
+          this._postOrder();
+        },
       );
-      this.socket.on(
-        'disconnect',
-        function () {
-          this.setState({
-            isConnected: false,
-          });
-        }.bind(this),
+    } else {
+      this.setState(
+        {
+          indexCandidate: this.state.indexCandidate + 1,
+        },
+        () => {
+          this._findConnectedDriver();
+        },
       );
     }
-  }
+  };
+
+  _handleReceiveOrderStatus = status => {
+    const { orderId } = this.state;
+    this.setState(
+      {
+        status: status,
+      },
+      () => {
+        AsyncStorage.getItem('orders', (_err, order) => {
+          if (order !== null) {
+            order = JSON.parse(order);
+            let index = order
+              .map(item => {
+                return item.orderId;
+              })
+              .indexOf(orderId.toString());
+            order[index].status = status;
+            AsyncStorage.setItem('orders', JSON.stringify(order), () => {
+              this._makePolyline();
+            });
+          }
+        });
+      },
+    );
+  };
+
+  _handleReceiveCoordinate = coordinate => {
+    const duration = 300;
+    this.state.driverCoord !== null &&
+      this.state.driverCoord
+        .timing({
+          ...coordinate,
+          duration: duration,
+        })
+        .start();
+  };
+
+  _handleReceiveOrderCancelled = () => {
+    const { orderId } = this.state;
+    AsyncStorage.getItem('orders', (_err, order) => {
+      if (order !== null) {
+        const newOrder = JSON.parse(order).map(item => {
+          if (item.orderId === orderId.toString()) {
+            return {
+              ...item,
+              status: 'cancelled_by_driver',
+            };
+          }
+          return item;
+        });
+        AsyncStorage.setItem('orders', JSON.stringify(newOrder), () => {
+          if (Platform.OS === 'android') {
+            ToastAndroid.show(
+              'Driver membatalkan pesanan anda',
+              ToastAndroid.SHORT,
+            );
+          } else {
+            Toast.show('Driver membatalkan pesanan anda', Toast.SHORT);
+          }
+          this.props.navigation.goBack();
+        });
+      }
+    });
+  };
+
+  _handleReceiveChat = chat => {
+    this.setState(
+      {
+        hasNewChats: true,
+        chats: [
+          ...this.state.chats,
+          {
+            ...chat,
+          },
+        ],
+        newChatLength: this.state.newChatLength + 1,
+      },
+      () => {
+        this._saveChatOnStorage({
+          orderId: chat.orderId,
+          sender: chat.sender,
+          text: chat.text,
+          dateTime: chat.dateTime,
+        });
+        Animated.timing(this.state.opacityBoxNotif, {
+          toValue: 1,
+          duration: 500,
+        }).start();
+        if (this.state.newChatLength > 0) {
+          clearTimeout(this.timer);
+          this.timer = setTimeout(
+            function () {
+              Animated.timing(this.state.opacityBoxNotif, {
+                toValue: 0,
+                duration: 500,
+              }).start();
+              setTimeout(
+                function () {
+                  this.setState({
+                    newChatLength: 0,
+                  });
+                }.bind(this),
+                500,
+              );
+            }.bind(this),
+            5000,
+          );
+        }
+      },
+    );
+  };
 
   componentDidMount() {
     const dataOrder = this.props.route.params?.dataOrder;
@@ -169,25 +275,44 @@ class Booking extends Component {
       );
     }
 
-    this.timerConnect = setTimeout(
-      function () {
-        this.setState({
-          readyConnect: true,
-        });
-      }.bind(this),
-      5000,
-    );
-    if (this.props.route.params?.map) {
-      this.props.route.params?.map.close();
+    const { socket } = this.context;
+
+    if (socket?.connected) {
+      this._getOrderStatus();
+      this._getChats();
     }
+
+    AsyncStorage.getItem('user_logged_in').then(v => {
+      if (v) {
+        const user = JSON.parse(v);
+        this.setState({
+          customer: user,
+          receiverId: user.userId,
+        });
+        socket?.on(
+          `${user.userId}_receive_response`,
+          this._handleReceiveResponse,
+        );
+        socket?.on(
+          `${user.userId}_receive_order_status`,
+          this._handleReceiveOrderStatus,
+        );
+        socket?.on(
+          `${user.userId}_receive_coordinate`,
+          this._handleReceiveCoordinate,
+        );
+        socket?.on(
+          `${user.userId}_receive_order_cancellation`,
+          this._handleReceiveOrderCancelled,
+        );
+        socket?.on(`${user.userId}_receive_chat`, this._handleReceiveChat);
+      }
+    });
+
     this.backHandler = BackHandler.addEventListener(
       'hardwareBackPress',
       this.preventBackButton,
     );
-    Platform.OS === 'android' &&
-      StatusBar.setBackgroundColor('rgba(255,255,255,.65)', true);
-    StatusBar.setBarStyle('dark-content', true);
-    AppState.addEventListener('change', this._handleAppStateChange);
     AsyncStorage.getItem('user_logged_in', (error, user) => {
       if (!error) {
         if (user != null) {
@@ -199,12 +324,17 @@ class Booking extends Component {
         }
       }
     });
+
+    this.appState = AppState.addEventListener(
+      'change',
+      this._handleAppStateChange,
+    );
   }
 
   componentWillUnmount() {
     this.backHandler?.remove();
-    if (this.props.route.params?.map) {
-      this.props.route.params?.map.open();
+    if (this.appState) {
+      this.appState.remove();
     }
     if (this.props.route.params?.actionBack) {
       this.props.route.params?.actionBack();
@@ -220,170 +350,33 @@ class Booking extends Component {
     this.pendingPromises.map(p => {
       this.removePendingPromise(p);
     });
-    if (this.socket) {
-      this.socket.disconnect();
-    }
     clearTimeout(this.timeoutPolyline);
     clearTimeout(this.timeoutNextDriver);
-  }
 
-  _socket = () => {
-    const socket = this.socket;
-    const { orderId, receiverId } = this.state;
-    socket.on(
-      'connect',
-      function () {
-        this._getOrderStatus();
-        this._getChats();
-      }.bind(this),
-    );
-    socket.on(
-      `${receiverId}_receive_response`,
-      function (status) {
-        clearTimeout(this.timeoutNextDriver);
-        if (status === 'ACCEPT') {
-          this.setState(
-            {
-              driver: this.state.driverTemporary,
-              driverCoord: new AnimatedRegion({
-                latitude: this.state.driverTemporary.driverLatitude,
-                longitude: this.state.driverTemporary.driverLongitude,
-                latitudeDelta: LATITUDE_DELTA,
-                longitudeDelta: LONGITUDE_DELTA,
-              }),
-            },
-            () => {
-              this._postOrder();
-            },
-          );
-        } else {
-          this.setState(
-            {
-              indexCandidate: this.state.indexCandidate + 1,
-            },
-            () => {
-              this._findConnectedDriver();
-            },
-          );
-        }
-      }.bind(this),
-    );
-    socket.on(
-      `${receiverId}_receive_order_status`,
-      function (status) {
-        this.setState(
-          {
-            status: status,
-          },
-          () => {
-            AsyncStorage.getItem('orders', (_err, order) => {
-              if (order !== null) {
-                order = JSON.parse(order);
-                let index = order
-                  .map(item => {
-                    return item.orderId;
-                  })
-                  .indexOf(orderId.toString());
-                order[index].status = status;
-                AsyncStorage.setItem('orders', JSON.stringify(order), () => {
-                  this._makePolyline();
-                });
-              }
-            });
-          },
+    const { socket } = this.context;
+    AsyncStorage.getItem('user_logged_in').then(v => {
+      if (v) {
+        const user = JSON.parse(v);
+        socket?.off(
+          `${user.userId}_receive_response`,
+          this._handleReceiveResponse,
         );
-      }.bind(this),
-    );
-    socket.on(
-      `${receiverId}_receive_coordinate`,
-      function (coordinate) {
-        let duration = 300;
-        this.state.driverCoord !== null &&
-          this.state.driverCoord
-            .timing({
-              ...coordinate,
-              duration: duration,
-            })
-            .start();
-      }.bind(this),
-    );
-    socket.on(
-      `${receiverId}_receive_order_cancellation`,
-      function () {
-        AsyncStorage.getItem('orders', (_err, order) => {
-          if (order !== null) {
-            order = JSON.parse(order);
-            let index = order
-              .map(item => {
-                return item.orderId;
-              })
-              .indexOf(orderId.toString());
-            order[index].status = 'cancelled_by_driver';
-            AsyncStorage.setItem('orders', JSON.stringify(order), () => {
-              if (Platform.OS === 'android') {
-                ToastAndroid.show(
-                  'Driver membatalkan pesanan anda',
-                  ToastAndroid.SHORT,
-                );
-              } else {
-                Toast.show('Driver membatalkan pesanan anda', Toast.SHORT);
-              }
-              this.props.navigation.goBack();
-            });
-          }
-        });
-      }.bind(this),
-    );
-    socket.on(
-      `${receiverId}_receive_chat`,
-      function (chat) {
-        this.setState(
-          {
-            hasNewChats: true,
-            chats: [
-              ...this.state.chats,
-              {
-                ...chat,
-              },
-            ],
-            newChatLength: this.state.newChatLength + 1,
-          },
-          () => {
-            this._saveChatOnStorage({
-              orderId: chat.orderId,
-              sender: chat.sender,
-              text: chat.text,
-              dateTime: chat.dateTime,
-            });
-            Animated.timing(this.state.opacityBoxNotif, {
-              toValue: 1,
-              duration: 500,
-            }).start();
-            if (this.state.newChatLength > 0) {
-              clearTimeout(this.timer);
-              this.timer = setTimeout(
-                function () {
-                  Animated.timing(this.state.opacityBoxNotif, {
-                    toValue: 0,
-                    duration: 500,
-                  }).start();
-                  setTimeout(
-                    function () {
-                      this.setState({
-                        newChatLength: 0,
-                      });
-                    }.bind(this),
-                    500,
-                  );
-                }.bind(this),
-                5000,
-              );
-            }
-          },
+        socket?.off(
+          `${user.userId}_receive_order_status`,
+          this._handleReceiveOrderStatus,
         );
-      }.bind(this),
-    );
-  };
+        socket?.off(
+          `${user.userId}_receive_coordinate`,
+          this._handleReceiveCoordinate,
+        );
+        socket?.off(
+          `${user.userId}_receive_order_cancellation`,
+          this._handleReceiveOrderCancelled,
+        );
+        socket?.off(`${user.userId}_receive_chat`, this._handleReceiveChat);
+      }
+    });
+  }
 
   _saveChatOnStorage = data => {
     AsyncStorage.getItem('chats', (_error, chat) => {
@@ -398,6 +391,7 @@ class Booking extends Component {
   };
 
   _getOrderStatus = () => {
+    const dataOrder = this.props.route.params?.dataOrder;
     const { orderId } = this.state;
     const wrappedPromise = cancellablePromise(this._promiseGetOrderStatus());
     this.appendPendingPromise(wrappedPromise);
@@ -417,7 +411,7 @@ class Booking extends Component {
                     .map(item => {
                       return item.orderId;
                     })
-                    .indexOf(orderId.toString());
+                    .indexOf(dataOrder?.orderId || orderId.toString());
                   order[index].status = status;
                   AsyncStorage.setItem('orders', JSON.stringify(order));
                 }
@@ -446,10 +440,11 @@ class Booking extends Component {
 
   _promiseGetOrderStatus = () => {
     return new Promise((resolve, reject) => {
+      const dataOrder = this.props.route.params?.dataOrder;
       const { orderId } = this.state;
-      if (orderId !== null) {
+      if (dataOrder || orderId !== null) {
         AsyncStorage.getItem('token').then(v => {
-          fetch(`${HOST_REST_API}order/${orderId}`, {
+          fetch(`${HOST_REST_API}order/${dataOrder?.orderId || orderId}`, {
             headers: {
               Authorization: `Bearer ${v}`,
             },
@@ -665,15 +660,6 @@ class Booking extends Component {
             }.bind(this),
           );
           this._makePolyline();
-          if (
-            status !== 'completed' &&
-            status !== 'cancelled_by_user' &&
-            status !== 'cancelled_by_driver'
-          ) {
-            if (this.socket) {
-              this._socket();
-            }
-          }
         },
       );
     }
@@ -873,9 +859,6 @@ class Booking extends Component {
               orderDate: new Date(),
             },
             () => {
-              if (this.socket) {
-                this._socket();
-              }
               this._findConnectedDriver();
             },
           );
@@ -922,7 +905,6 @@ class Booking extends Component {
     const {
       driverCandidate,
       indexCandidate,
-      isConnected,
       orderType,
       carts,
       origin,
@@ -935,9 +917,10 @@ class Booking extends Component {
       note,
       dateString,
     } = this.state;
-    if (this.socket && isConnected) {
+    const { socket } = this.context;
+    if (socket && socket.connected) {
       if (driverCandidate.length > 0 && driverCandidate[indexCandidate]) {
-        this.socket.emit(
+        socket.emit(
           'isConnected',
           driverCandidate[indexCandidate].socketId,
           function (result) {
@@ -976,7 +959,7 @@ class Booking extends Component {
                     note: note,
                     date: dateString,
                   };
-                  this.socket.emit('find_driver', {
+                  socket.emit('find_driver', {
                     receiverId: this.state.driverTemporary.driverId,
                     data: sendData,
                   });
@@ -1026,6 +1009,7 @@ class Booking extends Component {
   };
 
   _postOrder = () => {
+    const { socket } = this.context;
     const {
       orderType,
       carts,
@@ -1099,7 +1083,7 @@ class Booking extends Component {
         };
         if (res.status === 'OK') {
           clearTimeout(this.timeOutPostOrder);
-          this.socket.emit('send_response', {
+          socket.emit('send_response', {
             receiverId: driver.driverId,
             data: true,
           });
@@ -1176,7 +1160,8 @@ class Booking extends Component {
         cancelling: true,
       },
       () => {
-        const { driver, orderId, carts } = this.state;
+        const { socket } = this.context;
+        const { driver, orderId } = this.state;
         const status = 'cancelled_by_user';
         AsyncStorage.getItem('token').then(v => {
           fetch(`${HOST_REST_API}order/status`, {
@@ -1209,12 +1194,10 @@ class Booking extends Component {
                   }
                 });
                 if (driver != null) {
-                  if (this.socket) {
-                    this.socket.emit('send_order_cancellation', {
-                      receiverId: driver.driverId,
-                      data: 'by_user',
-                    });
-                  }
+                  socket?.emit('send_order_cancellation', {
+                    receiverId: driver.driverId,
+                    data: 'by_user',
+                  });
                 }
                 if (Platform.OS === 'android') {
                   ToastAndroid.show('Pesanan dibatalkan', ToastAndroid.SHORT);
@@ -1225,7 +1208,6 @@ class Booking extends Component {
                   this.props.route.params?.actionBack();
                 }
                 this.props.navigation.goBack();
-
               } else {
                 this.setState({
                   cancelling: false,
@@ -1256,15 +1238,10 @@ class Booking extends Component {
         barStyle: 'dark-content',
         background: 'rgba(255,255,255,.65)',
       },
-      backListener: {
-        add: () =>
-          BackHandler.addEventListener(
-            'hardwareBackPress',
-            this.preventBackButton,
-          ),
-        remove: () => {},
-      },
       data: data,
+      actionBack: () => {
+        this._getOrderStatus();
+      },
     });
   };
 
@@ -1292,21 +1269,9 @@ class Booking extends Component {
       orderId,
       driverCoord,
     } = this.state;
+
     return (
       <View style={{ flex: 1 }}>
-        {driver != null && (
-          <SimpleHeader
-            goBack
-            navigation={this.props.navigation}
-            backBtnStyle={{ backgroundColor: 'white', elevation: 5 }}
-            style={{
-              position: 'absolute',
-              top: 0,
-              backgroundColor: 'transparent',
-              zIndex: 10,
-            }}
-          />
-        )}
         <View style={{ flex: 1 }}>
           <MapView
             ref={_mapView => (this._mapView = _mapView)}
@@ -1371,8 +1336,21 @@ class Booking extends Component {
             right: 0,
           }}
         >
-          <SafeAreaView>
-            {driver == null && (
+          {driver !== null && (
+            <SimpleHeader
+              goBack
+              navigation={this.props.navigation}
+              backBtnStyle={{ backgroundColor: 'white', elevation: 5 }}
+              style={{
+                position: 'absolute',
+                top: -50,
+                backgroundColor: 'transparent',
+                zIndex: 10,
+              }}
+            />
+          )}
+          <View>
+            {driver === null && !this.props.route.params?.dataOrder && (
               <View style={{ padding: 15 }}>
                 <Text
                   style={{
@@ -1508,7 +1486,6 @@ class Booking extends Component {
                             pushChat: chats => {
                               this.setState({ chats });
                             },
-                            socket: this.socket,
                             receiverId: this.state.receiverId,
                             driver: this.state.driver,
                             orderId: this.state.orderId,
@@ -1659,75 +1636,7 @@ class Booking extends Component {
                 />
               </View>
             )}
-            {driver !== null &&
-              this.socket &&
-              !this.state.isConnected &&
-              (this.state.readyConnect ? (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'rgba(0,0,0,.35)',
-                    zIndex: 2,
-                  }}
-                >
-                  <Fa
-                    iconStyle="solid"
-                    name="exclamation-circle"
-                    size={40}
-                    style={{ color: Color.red, marginBottom: 15 }}
-                  />
-                  <Text
-                    style={{
-                      textAlign: 'center',
-                      color: Color.white,
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    Tidak bisa terhubung
-                  </Text>
-                </View>
-              ) : (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'rgba(0,0,0,.35)',
-                    zIndex: 2,
-                  }}
-                >
-                  <View
-                    style={{
-                      marginBottom: 15,
-                      height: 40,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <ActivityIndicator size="large" color={Color.primary} />
-                  </View>
-                  <Text
-                    style={{
-                      textAlign: 'center',
-                      color: Color.white,
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    Menghubungkan
-                  </Text>
-                </View>
-              ))}
-          </SafeAreaView>
+          </View>
         </View>
         {this.state.newChatLength > 0 && (
           <View

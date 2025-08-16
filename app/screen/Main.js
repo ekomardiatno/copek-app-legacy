@@ -24,6 +24,7 @@ const { width, height } = Dimensions.get('window');
 
 export default class Main extends Component {
   timer;
+  appState;
   constructor(props) {
     super(props);
     this.state = {
@@ -52,7 +53,7 @@ export default class Main extends Component {
     Platform.OS === 'android' &&
       StatusBar.setBackgroundColor('transparent', true);
     StatusBar.setBarStyle('dark-content', true);
-    AppState.addEventListener('change', this._handleAppState);
+    this.appState = AppState.addEventListener('change', this._handleAppState);
     this._fetchGetUser();
 
     Geolocation.getCurrentPosition(e => {
@@ -119,7 +120,9 @@ export default class Main extends Component {
   };
 
   componentWillUnmount() {
-    // AppState.removeEventListener('change', this._handleAppState);
+    if(this.appState) {
+      this.appState.remove()
+    }
     this.pendingPromises.map(p => {
       this.removePendingPromise(p);
     });

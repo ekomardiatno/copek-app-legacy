@@ -6,12 +6,9 @@ import {
   ScrollView,
   Image,
   TextInput,
-  StatusBar,
   Linking,
   Alert,
-  Platform,
   TouchableHighlight,
-  SafeAreaView,
 } from 'react-native';
 import Fa from '@react-native-vector-icons/fontawesome5';
 import Color, { colorYiq } from '../components/Color';
@@ -27,7 +24,6 @@ class Chat extends Component {
     super(props);
     this.state = {
       chats: [],
-      socket: null,
       chatText: '',
       driver: null,
       orderId: null,
@@ -35,47 +31,61 @@ class Chat extends Component {
     };
   }
 
-  componentDidMount() {
-    Platform.OS === 'android' &&
-      StatusBar.setBackgroundColor(Color.primary, true);
-    StatusBar.setBarStyle('dark-content', true);
-    if (this.props.route.params?.backListener) {
-      this.props.route.params?.backListener.remove();
-    }
-
-    if (this.props.route.params?.data) {
-      const { chats, socket, receiverId, driver, orderId, status } =
-        this.props.route.params?.data;
-      this.setState(
-        {
-          chats,
-          socket,
-          driver,
-          orderId,
-          status,
-        },
-        () => {
-          const { socket } = this.state;
-          if (socket !== null && socket !== undefined) {
-            socket.on(
-              'connect',
-              function () {
-                this._getChats !== null ? this._getChats() : null;
-              }.bind(this),
+  _getChats = () => {
+    const { orderId } = this.state;
+    if (orderId !== null) {
+      AsyncStorage.getItem('token').then(v => {
+        fetch(`${HOST_REST_API}chat/history/${orderId}`, {
+          headers: {
+            Authorization: `Bearer ${v}`,
+          },
+        })
+          .then(res => res.json())
+          .then(chat => {
+            if (chat.status === 'OK' && chat.data.length > 0) {
+              chat = chat.data;
+              this.setState(
+                {
+                  chats: chat,
+                },
+                () => {
+                  AsyncStorage.getItem('chats', (_err, res) => {
+                    if (res !== null) {
+                      res = JSON.parse(res);
+                      let chatArray = [];
+                      res.map(a => {
+                        a.orderId !== orderId && chatArray.push(a);
+                      });
+                      AsyncStorage.setItem(
+                        'chats',
+                        JSON.stringify(chatArray.concat(chat)),
+                      );
+                    } else {
+                      AsyncStorage.setItem('chats', JSON.stringify([chat]));
+                    }
+                  });
+                },
+              );
+            }
+          })
+          .catch(_err => {
+            Alert.alert(
+              'Gagal mendapatkan obrolan',
+              'Terjadi kesalahan pada sistem, coba lagi nanti',
+              [
+                {
+                  text: 'Coba lagi',
+                  onPress: this._getChats,
+                },
+              ],
+              { cancelable: true },
             );
-            socket.on(
-              `${receiverId}_receive_chat`,
-              function (chat) {
-                this._putChat !== null ? this._putChat(chat) : null;
-              }.bind(this),
-            );
-          }
-        },
-      );
+          });
+      });
     }
-  }
+  };
 
-  _putChat = chat => {
+  _handleReceiveChat = chat => {
     this.setState(
       {
         chats: [
@@ -96,85 +106,52 @@ class Chat extends Component {
     );
   };
 
-  _getChats = () => {
-    const { orderId } = this.state;
-    if (orderId !== null) {
-      AsyncStorage.getItem('token').then(v => {
-        fetch(`${HOST_REST_API}chat/history/${orderId}`, {
-          headers: {
-            Authorization: `Bearer ${v}`,
-          },
-        })
-          .then(res => res.json())
-          .then(chat => {
-            if (chat.status === 'OK' && chat.data.length > 0) {
-              chat = chat.data;
-              this.setState(
-                {
-                  chats: chat,
-                },
-                () => {
-                  AsyncStorage.getItem('chats', (err, res) => {
-                    if (res !== null) {
-                      res = JSON.parse(res);
-                      let chatArray = [];
-                      res.map(a => {
-                        a.orderId !== orderId && chatArray.push(a);
-                      });
-                      AsyncStorage.setItem(
-                        'chats',
-                        JSON.stringify(chatArray.concat(chat)),
-                      );
-                    } else {
-                      AsyncStorage.setItem('chats', JSON.stringify([chat]));
-                    }
-                  });
-                },
-              );
-            }
-          })
-          .catch(err => {
-            Alert.alert(
-              'Gagal mendapatkan obrolan',
-              'Terjadi kesalahan pada sistem, coba lagi nanti',
-              [
-                {
-                  text: 'Coba lagi',
-                  onPress: this._getChats,
-                },
-              ],
-              { cancelable: true },
-            );
-          });
+  componentDidMount() {
+    const { socket } = this.context;
+
+    if (socket?.connected) {
+      this._getChats();
+    }
+    AsyncStorage.getItem('user_logged_in').then(v => {
+      if (v) {
+        const user = JSON.parse(v);
+        socket?.on(`${user.userId}_receive_chat`, this._handleReceiveChat);
+      }
+    });
+
+    if (this.props.route.params?.data) {
+      const { chats, driver, orderId, status } = this.props.route.params?.data;
+      this.setState({
+        chats,
+        driver,
+        orderId,
+        status,
       });
     }
-  };
+  }
 
   componentWillUnmount() {
-    if (this.props.route.params?.backListener) {
-      this.props.route.params?.backListener.add();
-    }
     if (this.props.route.params?.data) {
       this.props.route.params?.data.noNewChat();
       this.props.route.params?.data.pushChat(this.state.chats);
     }
-    if (this.props.route.params?.statusbar) {
-      StatusBar.setBarStyle(this.props.route.params?.statusbar.barStyle, true);
-      Platform.OS === 'android' &&
-        StatusBar.setBackgroundColor(
-          this.props.route.params?.statusbar.background,
-          true,
-        );
+
+    if (this.props.route.params?.actionBack) {
+      this.props.route.params?.actionBack();
     }
-    this.setState({
-      socket: null,
+
+    const { socket } = this.context;
+    AsyncStorage.getItem('user_logged_in').then(v => {
+      if (v) {
+        const user = JSON.parse(v);
+        socket?.on(`${user.userId}_receive_chat`, this._handleReceiveChat);
+      }
     });
-    this._getChats = null;
-    this._putChat = null;
   }
 
   _onSendChat = () => {
-    const { socket, chatText, driver, orderId } = this.state;
+    const { socket } = this.context;
+    const { chatText, driver, orderId } = this.state;
     if (chatText.length > 0) {
       AsyncStorage.getItem('token').then(v => {
         fetch(`${HOST_REST_API}chat/post`, {
@@ -213,7 +190,7 @@ class Chat extends Component {
                     text: chat.text,
                     dateTime: chat.dateTime,
                   });
-                  socket.emit('send_chat', {
+                  socket?.emit('send_chat', {
                     receiverId: driver.driverId,
                     data: {
                       orderId: chat.orderId,
@@ -231,11 +208,13 @@ class Chat extends Component {
   };
 
   _saveOnStorage = data => {
-    AsyncStorage.getItem('chats', (error, chat) => {
+    AsyncStorage.getItem('chats', (_error, chat) => {
       if (chat !== null) {
-        chat = JSON.parse(chat);
-        chat.push(data);
-        AsyncStorage.setItem('chats', JSON.stringify(chat));
+        const newChat = JSON.parse(chat);
+        const filterChat = newChat.filter(
+          c => c.orderId === data.orderId && c.dateTime === data.dateTime,
+        );
+        AsyncStorage.setItem('chats', JSON.stringify([...filterChat, data]));
       } else {
         AsyncStorage.setItem('chats', JSON.stringify([data]));
       }
@@ -246,15 +225,26 @@ class Chat extends Component {
     let { chats, driver } = this.state;
     return (
       <View style={{ flex: 1, paddingBottom: this.props.insets.bottom }}>
-        <View style={{ backgroundColor: Color.primary, elevation: 5, paddingTop: this.props.insets.top, }}>
-          <SafeAreaView>
+        <View
+          style={{
+            backgroundColor: Color.primary,
+            elevation: 5,
+            paddingTop: this.props.insets.top,
+          }}
+        >
+          <View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ padding: 10, paddingLeft: 15 }}>
                 <TouchableHighlight
                   style={{ borderRadius: 35 / 2 }}
                   activeOpacity={0.85}
                   underlayColor="#fff"
-                  onPress={() => this.props.navigation.goBack()}
+                  onPress={() => {
+                    this.props.navigation.goBack();
+                    if (this.props.route.params?.actionBack) {
+                      this.props.route.params?.actionBack();
+                    }
+                  }}
                 >
                   <View
                     style={{
@@ -263,11 +253,15 @@ class Chat extends Component {
                       borderRadius: 35 / 2,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      backgroundColor: Color.primary,
                       overflow: 'hidden',
                     }}
                   >
-                    <Fa iconStyle="solid" size={20} name="chevron-left" />
+                    <Fa
+                      iconStyle="solid"
+                      color={Color.white}
+                      size={20}
+                      name="chevron-left"
+                    />
                   </View>
                 </TouchableHighlight>
               </View>
@@ -288,7 +282,7 @@ class Chat extends Component {
                     alignItems: 'center',
                     justifyContent: 'center',
                     padding: 8,
-                    backgroundColor: Color.secondary,
+                    backgroundColor: Color.grayLighter,
                   }}
                 >
                   {driver !== null ? (
@@ -305,7 +299,11 @@ class Chat extends Component {
                     <View>
                       <Text
                         numberOfLines={1}
-                        style={{ fontSize: 17, marginBottom: 3 }}
+                        style={{
+                          fontSize: 17,
+                          marginBottom: 3,
+                          color: Color.white,
+                        }}
                       >
                         {driver.driverName}
                       </Text>
@@ -313,7 +311,7 @@ class Chat extends Component {
                         numberOfLines={1}
                         style={{
                           fontSize: 12,
-                          color: Color.gray,
+                          color: Color.white,
                           letterSpacing: 1,
                         }}
                       >
@@ -360,13 +358,13 @@ class Chat extends Component {
                         borderRadius: 35 / 2,
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: Color.secondary,
+                        backgroundColor: Color.white,
                         overflow: 'hidden',
                       }}
                     >
                       <Fa
                         iconStyle="solid"
-                        color={colorYiq(Color.secondary)}
+                        color={Color.primary}
                         size={16}
                         name="phone"
                       />
@@ -393,13 +391,13 @@ class Chat extends Component {
                         borderRadius: 35 / 2,
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: Color.secondary,
+                        backgroundColor: Color.white,
                         overflow: 'hidden',
                       }}
                     >
                       <Fa
                         iconStyle="brand"
-                        color={colorYiq(Color.secondary)}
+                        color={Color.primary}
                         size={16}
                         name="whatsapp"
                       />
@@ -408,7 +406,7 @@ class Chat extends Component {
                 </View>
               </View>
             </View>
-          </SafeAreaView>
+          </View>
         </View>
         <View style={{ flex: 1, backgroundColor: Color.grayLighter }}>
           {chats.length <= 0 ? (
@@ -438,7 +436,7 @@ class Chat extends Component {
           ) : (
             <ScrollView
               ref={ref => (this._scrollView = ref)}
-              onContentSizeChange={(contentWidth, contentHeight) => {
+              onContentSizeChange={(_contentWidth, _contentHeight) => {
                 this._scrollView.scrollToEnd({ animated: true });
               }}
             >
@@ -543,7 +541,7 @@ class Chat extends Component {
                             <Text
                               style={{
                                 lineHeight: 16,
-                                color: colorYiq(Color.primary),
+                                color: Color.white,
                               }}
                             >
                               {chat.text}
@@ -557,7 +555,7 @@ class Chat extends Component {
                             textAlign: 'right',
                             marginRight: 20,
                             fontSize: 10,
-                            color: Color.textMuted,
+                            color: Color.white,
                           }}
                         >
                           {dateFormatted(chat.dateTime, true, true)}
@@ -586,7 +584,7 @@ class Chat extends Component {
           )}
         </View>
         <View style={{ backgroundColor: Color.grayLighter }}>
-          <SafeAreaView>
+          <View>
             <View
               style={{
                 paddingHorizontal: 15,
@@ -670,7 +668,7 @@ class Chat extends Component {
                       height: 45,
                       marginLeft: 10,
                       borderRadius: 45 / 2,
-                      backgroundColor: Color.green,
+                      backgroundColor: Color.secondary,
                       alignItems: 'center',
                       justifyContent: 'center',
                       elevation: 1,
@@ -680,18 +678,18 @@ class Chat extends Component {
                     <Fa
                       iconStyle="solid"
                       size={18}
-                      color={colorYiq(Color.green)}
+                      color={Color.white}
                       name="paper-plane"
                     />
                   </View>
                 </TouchableHighlight>
               )}
             </View>
-          </SafeAreaView>
+          </View>
         </View>
       </View>
     );
   }
 }
 
-export default withSafeAreaInsets(Chat)
+export default withSafeAreaInsets(Chat);

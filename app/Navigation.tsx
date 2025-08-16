@@ -55,7 +55,9 @@ function MainScreen() {
 const Stack = createNativeStackNavigator();
 
 export default function Navigation(): JSX.Element {
+  
   const insets = useSafeAreaInsets();
+
   return (
     <View
       style={{

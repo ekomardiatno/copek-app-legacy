@@ -17,8 +17,7 @@ import {
   Linking,
   TouchableHighlight,
   Platform,
-  TextInput,
-  SafeAreaView
+  TextInput
 } from 'react-native';
 import Color, { colorYiq } from './Color';
 import Feather from '@react-native-vector-icons/feather';
@@ -934,7 +933,7 @@ export const PopUp = withSafeAreaInsets(PopUpRaw);
 export class FoodMerchant extends Component {
   render() {
     return (
-      <SafeAreaView
+      <View
         style={{
           backgroundColor: Color.white,
           marginBottom: 10,
@@ -1213,7 +1212,7 @@ export class FoodMerchant extends Component {
             );
           })}
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 }
@@ -2367,7 +2366,7 @@ export class DummyMerchantInfo extends Component {
 export class DummyFareRide extends Component {
   render() {
     return (
-      <SafeAreaView
+      <View
         style={{
           position: 'absolute',
           bottom: 0,
@@ -2575,7 +2574,7 @@ export class DummyFareRide extends Component {
             />
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 }
