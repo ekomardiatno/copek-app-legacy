@@ -14,6 +14,7 @@ import Spinner from 'react-native-spinkit';
 import { WEB_APP_HOST } from './Define';
 import Color from './Color';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import FontAwesome5 from '@react-native-vector-icons/fontawesome5';
 
 export const SocketContext = createContext<{
   socket: Socket | null;
@@ -119,15 +120,20 @@ export default function SocketProvider({
             {isConnecting ? (
               <Spinner size={50} type="Circle" />
             ) : (
-              <TouchableOpacity
-                onPress={() => {
-                  socket.connect();
-                }}
-              >
-                <Text style={{ fontSize: 18, fontWeight: 'bold' }}>
-                  Coba lagi
-                </Text>
-              </TouchableOpacity>
+              <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                <FontAwesome5 iconStyle='solid' name='exclamation-triangle' color={Color.red} size={40} />
+                <Text style={{ fontSize: 16, fontWeight: '300', marginTop: 8 }}>Server tidak tersedia</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setIsConnecting(true);
+                    socket.connect();
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: Color.red, marginTop: 8 }}>
+                    Coba lagi
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         )}

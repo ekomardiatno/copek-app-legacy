@@ -14,7 +14,6 @@ import { SimpleHeader, Button } from '../components/Components';
 import Icon from '@react-native-vector-icons/fontawesome5';
 import cancellablePromise from '../helpers/cancellablePromise';
 import { HOST_REST_API } from '../components/Define';
-import KeyboardSafeView from '../components/KeyboardSafeView';
 
 export default class ForgotPassword extends Component {
   constructor(props) {
@@ -97,112 +96,107 @@ export default class ForgotPassword extends Component {
 
   render() {
     return (
-      <KeyboardSafeView>
-        <View style={{ flex: 1 }}>
-          <SimpleHeader
-            goBack
-            navigation={this.props.navigation}
-            title="Reset Password"
-          />
-          <ScrollView>
-            <View style={{ paddingHorizontal: 20, marginTop: 15 }}>
+      <View style={{ flex: 1 }}>
+        <SimpleHeader
+          goBack
+          navigation={this.props.navigation}
+          title="Reset Password"
+        />
+        <ScrollView>
+          <View style={{ paddingHorizontal: 20, marginTop: 15 }}>
+            <View
+              style={{
+                paddingHorizontal: 30,
+                alignItems: 'center',
+                marginBottom: 30,
+              }}
+            >
+              <Text
+                style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8 }}
+              >
+                Lupa Password
+              </Text>
+              <Text style={{ color: Color.textMuted, textAlign: 'center' }}>
+                Silakan masukan alamat email anda untuk me-reset kata sandi.
+              </Text>
+            </View>
+            <View style={{ marginBottom: 15 }}>
+              <Text style={{ fontSize: 13 }}>Alamat Email</Text>
               <View
                 style={{
-                  paddingHorizontal: 30,
-                  alignItems: 'center',
-                  marginBottom: 30,
+                  flexDirection: 'row',
+                  borderBottomWidth: 1,
+                  borderBottomColor: Color.borderColor,
                 }}
               >
-                <Text
-                  style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8 }}
-                >
-                  Lupa Password
-                </Text>
-                <Text style={{ color: Color.textMuted, textAlign: 'center' }}>
-                  Silakan masukan alamat email anda untuk me-reset kata sandi.
-                </Text>
-              </View>
-              <View style={{ marginBottom: 15 }}>
-                <Text style={{ fontSize: 13 }}>Alamat Email</Text>
-                <View
+                <TextInput
+                  value={this.state.value}
+                  onChangeText={email => this.setState({ email })}
+                  placeholder="ekomardiatno@domain.com"
+                  placeholderTextColor={Color.gray}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
                   style={{
-                    flexDirection: 'row',
-                    borderBottomWidth: 1,
-                    borderBottomColor: Color.borderColor,
+                    paddingHorizontal: 0,
+                    paddingVertical: 6,
+                    flex: 1,
+                    fontFamily: 'Yantramanav',
+                    letterSpacing: 1,
+                    color: Color.black,
                   }}
-                >
-                  <TextInput
-                    value={this.state.value}
-                    onChangeText={email => this.setState({ email })}
-                    placeholder="ekomardiatno@domain.com"
-                    placeholderTextColor={Color.gray}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    style={{
-                      paddingHorizontal: 0,
-                      paddingVertical: 6,
-                      flex: 1,
-                      fontFamily: 'Yantramanav',
-                      letterSpacing: 1,
-                      color: Color.black,
-                    }}
-                  />
-                  <View
-                    style={{
-                      width: 40,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Icon
-                      iconStyle="solid"
-                      color={Color.gray}
-                      name="at"
-                      size={20}
-                    />
-                  </View>
-                </View>
-              </View>
-              {this.state.loading ? (
+                />
                 <View
                   style={{
-                    backgroundColor: Color.blue,
-                    elevation: 3,
-                    borderRadius: 3,
+                    width: 40,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: 40,
                   }}
                 >
-                  <ActivityIndicator
-                    size="small"
-                    color={colorYiq(Color.blue)}
+                  <Icon
+                    iconStyle="solid"
+                    color={Color.gray}
+                    name="at"
+                    size={20}
                   />
                 </View>
-              ) : (
-                <Button onPress={this._reset} blue title="Reset Password" />
-              )}
-              <View style={{ paddingHorizontal: 30, marginVertical: 15 }}>
-                <TouchableOpacity
-                  activeOpacity={1}
-                  onPress={() =>
-                    Linking.openURL('whatsapp://send?phone=+62859106975774')
-                  }
-                >
-                  <View style={{ flexDirection: 'row' }}>
-                    <Text style={{ fontSize: 13, textAlign: 'center' }}>
-                      Punya masalah lain saat ingin masuk?{' '}
-                      <Text style={{ fontSize: 13, fontWeight: 'bold' }}>
-                        Dapatkan bantuan Admin.
-                      </Text>
-                    </Text>
-                  </View>
-                </TouchableOpacity>
               </View>
             </View>
-          </ScrollView>
-        </View>
-      </KeyboardSafeView>
+            {this.state.loading ? (
+              <View
+                style={{
+                  backgroundColor: Color.blue,
+                  elevation: 3,
+                  borderRadius: 3,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: 40,
+                }}
+              >
+                <ActivityIndicator size="small" color={colorYiq(Color.blue)} />
+              </View>
+            ) : (
+              <Button onPress={this._reset} blue title="Reset Password" />
+            )}
+            <View style={{ paddingHorizontal: 30, marginVertical: 15 }}>
+              <TouchableOpacity
+                activeOpacity={1}
+                onPress={() =>
+                  Linking.openURL('whatsapp://send?phone=+62859106975774')
+                }
+              >
+                <View style={{ flexDirection: 'row' }}>
+                  <Text style={{ fontSize: 13, textAlign: 'center' }}>
+                    Punya masalah lain saat ingin masuk?{' '}
+                    <Text style={{ fontSize: 13, fontWeight: 'bold' }}>
+                      Dapatkan bantuan Admin.
+                    </Text>
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
     );
   }
 }
