@@ -1,14 +1,13 @@
+/* eslint-disable react-native/no-inline-styles */
 import { Component } from 'react';
 import {
   View,
   Text,
   StatusBar,
   Alert,
-  ToastAndroid,
   Platform,
   TouchableHighlight,
-  SafeAreaView,
-  ActivityIndicator,
+  ActivityIndicator
 } from 'react-native';
 import Fa from '@react-native-vector-icons/fontawesome5';
 import Color, { colorYiq } from '../../components/Color';
@@ -38,7 +37,6 @@ import {
   LONGITUDE_DELTA,
   HOST_REST_API,
 } from '../../components/Define';
-import Toast from 'react-native-simple-toast';
 
 class Overview extends Component {
   constructor(props) {
@@ -54,7 +52,6 @@ class Overview extends Component {
       },
       origin: null,
       destination: null,
-      mapView: true,
       note: '',
       fare: 0,
       bookingLoading: false,
@@ -99,7 +96,6 @@ class Overview extends Component {
   _mapReady = () => {
     if (this.props.route.params?.data) {
       let data = this.props.route.params?.data;
-      const MARKERS = [data[0].geometry, data[1].geometry];
       this.setState(
         {
           origin: data[0],
@@ -122,9 +118,10 @@ class Overview extends Component {
     this.appendPendingPromise(wrappedPromise);
     wrappedPromise.promise
       .then(coords => {
-        this.setState({
-          coords,
-        });
+        if (coords)
+          this.setState({
+            coords,
+          });
       })
       .then(() => {
         this._getDistances();
@@ -216,18 +213,6 @@ class Overview extends Component {
         barStyle: 'dark-content',
         background: Color.white,
       },
-      map: {
-        close: () => {
-          this.setState({
-            mapView: false,
-          });
-        },
-        open: () => {
-          this.setState({
-            mapView: true,
-          });
-        },
-      },
       ...params,
     });
   };
@@ -267,28 +252,30 @@ class Overview extends Component {
     wrappedPromise.promise
       .then(res => {
         if (res.length > 0) {
-          for (let i = 0; i < res.length; i++) {
-            AsyncStorage.getItem('orders', (_err, order) => {
-              if (order !== null) {
-                order = JSON.parse(order);
-                let index = order
-                  .map(item => {
-                    return item.orderId;
-                  })
-                  .indexOf(res[i].orderId.toString());
-                if (res[i].status !== null) {
-                  order[index].status = res[i].status;
-                } else {
-                  order.splice(index, 1);
+          AsyncStorage.getItem('orders', (_err, order) => {
+            if (order !== null) {
+              const newOrder = JSON.parse(order).map(item => {
+                const findFromRequest = res.find(
+                  r => r.orderId.toString() === item.orderId,
+                );
+                if (findFromRequest) {
+                  return {
+                    ...item,
+                    status: findFromRequest.status,
+                  };
                 }
-                AsyncStorage.setItem('orders', JSON.stringify(order), _error => {
-                  if (i + 1 >= res.length) {
-                    this._checkOrderUnfinishedAndBooking();
-                  }
-                });
-              }
-            });
-          }
+                return item;
+              });
+
+              AsyncStorage.setItem(
+                'orders',
+                JSON.stringify(newOrder),
+                _error => {
+                  this._checkOrderUnfinishedAndBooking();
+                },
+              );
+            }
+          });
         } else {
           this._checkOrderUnfinishedAndBooking();
         }
@@ -302,35 +289,57 @@ class Overview extends Component {
       });
   };
 
-  _checkOrderUnfinishedAndBooking = () => {
+  _checkOrderStatusOnServer = async order => {
+    const orders = await AsyncStorage.getItem('orders');
+    const token = await AsyncStorage.getItem('token');
+    const result = await fetch(`${HOST_REST_API}order/${order.orderId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (result.ok) {
+      const data = await result.json();
+      const newOrders = JSON.parse(orders).map(item => {
+        if (item.orderId === data.orderId) {
+          return {
+            ...order,
+            status: data.orderEndStatus,
+          };
+        }
+      });
+      AsyncStorage.setItem('orders', JSON.stringify(newOrders));
+      if (
+        ['completed', 'cancelled_by_user', 'cancelled_by_driver'].includes(
+          data.orderEndStatus,
+        )
+      ) {
+        this._checkOrderUnfinishedAndBooking();
+      } else {
+        this._informUnfinishedOrder();
+        this.setState({
+          bookingLoading: false,
+        });
+      }
+    } else {
+      this._informUnfinishedOrder();
+      this.setState({
+        bookingLoading: false,
+      });
+    }
+  };
+
+  _checkOrderUnfinishedAndBooking = async () => {
     AsyncStorage.getItem(
       'orders',
-      async function (_err, orders) {
-        let length = 0,
-          array = [];
-        if (orders !== null) {
-          orders = JSON.parse(orders);
-          for (let i = 0; i < orders.length; i++) {
-            if (
-              orders[i].status !== 'completed' &&
-              orders[i].status !== 'cancelled_by_user' &&
-              orders[i].status !== 'cancelled_by_driver'
-            ) {
-              array.push(orders[i]);
-            }
-          }
-          length = array.length;
-        }
-        if (length > 0) {
-          if (Platform.OS === 'android') {
-            ToastAndroid.show(
-              'Anda memiliki pesanan yang belum selesai',
-              ToastAndroid.SHORT,
-            );
-          } else {
-            Toast.show('Anda memiliki pesanan yang belum selesai', Toast.SHORT);
-          }
-        } else {
+      function (_err, v) {
+        const orders = v ? JSON.parse(v) : [];
+        const unfinishedOrders = orders.filter(
+          item =>
+            !['completed', 'cancelled_by_user', 'cancelled_by_driver'].includes(
+              item.status,
+            ),
+        );
+        if (unfinishedOrders.length < 1) {
           this._navigate('Booking', {
             orderType: 'RIDE',
             origin: this.state.origin,
@@ -339,10 +348,12 @@ class Overview extends Component {
             distances: this.state.distances,
             note: this.state.note,
           });
+          this.setState({
+            bookingLoading: false,
+          });
+        } else {
+          this._checkOrderStatusOnServer(unfinishedOrders[0]);
         }
-        this.setState({
-          bookingLoading: false,
-        });
       }.bind(this),
     );
   };
@@ -388,54 +399,42 @@ class Overview extends Component {
   };
 
   render() {
-    console.log(this.state.origin);
     return (
       <View style={{ flex: 1, backgroundColor: Color.grayLighter }}>
-        <SimpleHeader
-          goBack
-          navigation={this.props.navigation}
-          backBtnStyle={{ backgroundColor: 'white', elevation: 5 }}
-          style={{
-            position: 'absolute',
-            top: 0,
-            backgroundColor: 'transparent',
-            zIndex: 10,
+        <MapView
+          onMapReady={this._mapReady}
+          showsCompass={false}
+          ref={_mapView => (this._mapView = _mapView)}
+          provider={PROVIDER_GOOGLE}
+          initialRegion={this.state.region}
+          style={{ flex: 1 }}
+          mapPadding={{
+            top: StatusBar.currentHeight + 45,
+            left: 15,
+            right: 15,
+            bottom: 15,
           }}
-        />
-        {this.state.mapView && (
-          <MapView
-            onMapReady={this._mapReady}
-            showsCompass={false}
-            ref={_mapView => (this._mapView = _mapView)}
-            provider={PROVIDER_GOOGLE}
-            initialRegion={this.state.region}
-            style={{ flex: 1 }}
-            mapPadding={{
-              top: StatusBar.currentHeight + 45,
-              left: 15,
-              right: 15,
-              bottom: 271 + 50,
-            }}
-          >
-            {this.state.origin !== null ? (
-              <Marker
-                coordinate={this.state.origin.geometry}
-                image={require('../../images/icons/passenger-marker.png')}
-              />
-            ) : null}
-            {this.state.destination !== null ? (
-              <Marker
-                coordinate={this.state.destination.geometry}
-                image={require('../../images/icons/destination-marker.png')}
-              />
-            ) : null}
+        >
+          {this.state.origin !== null && (
+            <Marker
+              coordinate={this.state.origin.geometry}
+              image={require('../../images/icons/passenger-marker.png')}
+            />
+          )}
+          {this.state.destination !== null && (
+            <Marker
+              coordinate={this.state.destination.geometry}
+              image={require('../../images/icons/destination-marker.png')}
+            />
+          )}
+          {this.state.coords.length > 0 && (
             <Direction
               coordinates={this.state.coords}
               strokeWidth={4}
               strokeColor={Color.green}
             />
-          </MapView>
-        )}
+          )}
+        </MapView>
         {this.state.distances ? (
           <View
             style={{
@@ -446,7 +445,18 @@ class Overview extends Component {
               elevation: 5,
             }}
           >
-            <SafeAreaView>
+            <SimpleHeader
+              goBack
+              navigation={this.props.navigation}
+              backBtnStyle={{ backgroundColor: 'white', elevation: 5 }}
+              style={{
+                position: 'absolute',
+                top: -50,
+                backgroundColor: 'transparent',
+                zIndex: 10,
+              }}
+            />
+            <View>
               <View style={{ paddingTop: 10, paddingBottom: 15 }}>
                 <View
                   style={{
@@ -495,7 +505,10 @@ class Overview extends Component {
                         <View style={{ paddingHorizontal: 10, flex: 1 }}>
                           <Text
                             numberOfLines={1}
-                            style={{ fontSize: 10, textTransform: 'uppercase' }}
+                            style={{
+                              fontSize: 10,
+                              textTransform: 'uppercase',
+                            }}
                           >
                             Lokasi jemput
                           </Text>
@@ -565,7 +578,10 @@ class Overview extends Component {
                         <View style={{ paddingHorizontal: 10, flex: 1 }}>
                           <Text
                             numberOfLines={1}
-                            style={{ fontSize: 10, textTransform: 'uppercase' }}
+                            style={{
+                              fontSize: 10,
+                              textTransform: 'uppercase',
+                            }}
                           >
                             Lokasi tujuan •{' '}
                             {DistanceFormat(this.state.distances.distance)}
@@ -607,7 +623,7 @@ class Overview extends Component {
                             backgroundColor: Color.grayLight,
                             marginVertical: 2,
                           }}
-                        ></View>
+                        />
                         <View
                           style={{
                             width: 3,
@@ -616,7 +632,7 @@ class Overview extends Component {
                             backgroundColor: Color.grayLight,
                             marginVertical: 2,
                           }}
-                        ></View>
+                        />
                         <View
                           style={{
                             width: 3,
@@ -625,7 +641,7 @@ class Overview extends Component {
                             backgroundColor: Color.grayLight,
                             marginVertical: 2,
                           }}
-                        ></View>
+                        />
                       </View>
                     </View>
                   </View>
@@ -690,7 +706,7 @@ class Overview extends Component {
                   )}
                 </View>
               </View>
-            </SafeAreaView>
+            </View>
           </View>
         ) : (
           <DummyFareRide />

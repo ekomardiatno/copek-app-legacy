@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-inline-styles */
 import { Component } from 'react';
 import {
   View,
@@ -8,10 +9,8 @@ import {
   BackHandler,
   ToastAndroid,
   Platform,
-  TouchableHighlight,
-  SafeAreaView,
-  ActivityIndicator,
-  ScrollView,
+  TouchableHighlight, ActivityIndicator,
+  ScrollView
 } from 'react-native';
 import Feather from '@react-native-vector-icons/feather';
 import Fa from '@react-native-vector-icons/fontawesome5';
@@ -148,7 +147,7 @@ export default class Order extends Component {
       .then(() => {
         this.removePendingPromise(wrappedPromise);
       })
-      .catch(error => {
+      .catch(_error => {
         Alert.alert(
           'Gagal mendapatkan lokasi terkini',
           'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -197,7 +196,7 @@ export default class Order extends Component {
       .then(() => {
         this.removePendingPromise(wrappedPromise);
       })
-      .catch(error => {
+      .catch(_error => {
         Alert.alert(
           'Gagal mendapatkan info lokasi',
           'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -258,7 +257,7 @@ export default class Order extends Component {
       .then(() => {
         this.appendPendingPromise(wrappedPromise);
       })
-      .catch(error => {
+      .catch(_error => {
         Alert.alert(
           'Gagal menghitung jarak',
           'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -329,7 +328,7 @@ export default class Order extends Component {
       .then(() => {
         this.removePendingPromise(wrappedPromise);
       })
-      .catch(error => {
+      .catch(_error => {
         Alert.alert(
           'Gagal mendapatkan info resto',
           'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -487,7 +486,7 @@ export default class Order extends Component {
       .then(res => {
         if (res.length > 0) {
           for (let i = 0; i < res.length; i++) {
-            AsyncStorage.getItem('orders', (err, order) => {
+            AsyncStorage.getItem('orders', (_err, order) => {
               if (order !== null) {
                 order = JSON.parse(order);
                 let index = order
@@ -500,11 +499,15 @@ export default class Order extends Component {
                 } else {
                   order.splice(index, 1);
                 }
-                AsyncStorage.setItem('orders', JSON.stringify(order), error => {
-                  if (i + 1 >= res.length) {
-                    this._checkOrderUnfinishedAndBooking();
-                  }
-                });
+                AsyncStorage.setItem(
+                  'orders',
+                  JSON.stringify(order),
+                  _error => {
+                    if (i + 1 >= res.length) {
+                      this._checkOrderUnfinishedAndBooking();
+                    }
+                  },
+                );
               }
             });
           }
@@ -513,7 +516,7 @@ export default class Order extends Component {
         }
       })
       .then(() => this.removePendingPromise(wrappedPromise))
-      .catch(err => {
+      .catch(_err => {
         Alert.alert(
           'Gagal membuat pesanan',
           'Terjadi kesalahan pada sistem, coba lagi nanti',
@@ -521,35 +524,68 @@ export default class Order extends Component {
       });
   };
 
-  _checkOrderUnfinishedAndBooking = () => {
+  _informUnfinishedOrder = () => {
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(
+        'Anda memiliki pesanan yang belum selesai',
+        ToastAndroid.SHORT,
+      );
+    } else {
+      Toast.show('Anda memiliki pesanan yang belum selesai', Toast.SHORT);
+    }
+  };
+
+  _checkOrderStatusOnServer = async order => {
+    const orders = await AsyncStorage.getItem('orders');
+    const token = await AsyncStorage.getItem('token');
+    const result = await fetch(`${HOST_REST_API}order/${order.orderId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (result.ok) {
+      const data = await result.json();
+      const newOrders = JSON.parse(orders).map(item => {
+        if (item.orderId === data.orderId) {
+          return {
+            ...order,
+            status: data.orderEndStatus,
+          };
+        }
+      });
+      AsyncStorage.setItem('orders', JSON.stringify(newOrders));
+      if (
+        ['completed', 'cancelled_by_user', 'cancelled_by_driver'].includes(
+          data.orderEndStatus,
+        )
+      ) {
+        this._checkOrderUnfinishedAndBooking();
+      } else {
+        this._informUnfinishedOrder();
+        this.setState({
+          bookingLoading: false,
+        });
+      }
+    } else {
+      this._informUnfinishedOrder();
+      this.setState({
+        bookingLoading: false,
+      });
+    }
+  };
+
+  _checkOrderUnfinishedAndBooking = async () => {
     AsyncStorage.getItem(
       'orders',
-      function (err, orders) {
-        let length = 0,
-          array = [];
-        if (orders !== null) {
-          orders = JSON.parse(orders);
-          for (let i = 0; i < orders.length; i++) {
-            if (
-              orders[i].status !== 'completed' &&
-              orders[i].status !== 'cancelled_by_user' &&
-              orders[i].status !== 'cancelled_by_driver'
-            ) {
-              array.push(orders[i]);
-            }
-          }
-          length = array.length;
-        }
-        if (length > 0) {
-          if (Platform.OS === 'android') {
-            ToastAndroid.show(
-              'Anda memiliki pesanan yang belum selesai',
-              ToastAndroid.SHORT,
-            );
-          } else {
-            Toast.show('Anda memiliki pesanan yang belum selesai', Toast.SHORT);
-          }
-        } else {
+      function (_err, v) {
+        const orders = v ? JSON.parse(v) : [];
+        const unfinishedOrders = orders.filter(
+          item =>
+            !['completed', 'cancelled_by_user', 'cancelled_by_driver'].includes(
+              item.status,
+            ),
+        );
+        if (unfinishedOrders.length < 1) {
           this.props.navigation.navigate('Booking', {
             orderType: 'FOOD',
             merchant: this.state.merchant,
@@ -559,10 +595,12 @@ export default class Order extends Component {
             distances: this.state.distances,
             note: this.state.note,
           });
+          this.setState({
+            bookingLoading: false,
+          });
+        } else {
+          this._checkOrderStatusOnServer(unfinishedOrders[0]);
         }
-        this.setState({
-          bookingLoading: false,
-        });
       }.bind(this),
     );
   };
@@ -1093,7 +1131,7 @@ export default class Order extends Component {
         ) : (
           <DummyReviewFoodOrder />
         )}
-        <SafeAreaView>
+        <View>
           <View
             style={{
               padding: 15,
@@ -1148,7 +1186,7 @@ export default class Order extends Component {
               </View>
             )}
           </View>
-        </SafeAreaView>
+        </View>
       </View>
     );
   }

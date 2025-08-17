@@ -446,50 +446,17 @@ class Home extends Component {
                 </TouchableHighlight>
               </View>
             ) : (
-              (this.state.emptyCollection && (
-                <View
-                  style={{
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: Color.grayLighter,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 320,
-                      height: 100,
-                      marginVertical: 15,
-                      backgroundColor: Color.grayLight,
-                    }}
-                  >
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <ActivityIndicator size="large" color={Color.gray} />
-                    </View>
-                  </View>
-                </View>
-              )) || (
-                <View
-                  style={{
-                    backgroundColor: Color.grayLighter,
-                    borderRadius: 10,
-                    paddingHorizontal: 15,
-                    marginHorizontal: 15,
-                    marginBottom: 10,
-                    opacity: 1,
-                    height: 40,
-                  }}
-                />
-              )
+              <View
+                style={{
+                  backgroundColor: Color.grayLighter,
+                  borderRadius: 10,
+                  paddingHorizontal: 15,
+                  marginHorizontal: 15,
+                  marginBottom: 10,
+                  opacity: 1,
+                  height: 40,
+                }}
+              />
             )}
           </View>
           <View style={{ flex: 1 }}>

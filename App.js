@@ -2,10 +2,11 @@
 /* eslint-disable react-native/no-inline-styles */
 import { useCallback, useEffect } from 'react';
 import {
-  PermissionsAndroid, Alert,
+  PermissionsAndroid,
+  Alert,
   BackHandler,
   Linking,
-  View
+  View,
 } from 'react-native';
 import { version } from './package.json';
 import { HOST_REST_API } from './app/components/Define';
@@ -15,6 +16,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import Navigation from './app/Navigation';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import SocketProvider from './app/components/SocketProvider';
 
 export default function App() {
   const requestLocationPermission = useCallback(async () => {
@@ -37,11 +39,11 @@ export default function App() {
 
   const checkVersion = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('token')
+      const token = await AsyncStorage.getItem('token');
       const result = await fetch(`${HOST_REST_API}app-version/copek`, {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (!result.ok) {
         throw new Error('Failed to get version list');
@@ -89,9 +91,11 @@ export default function App() {
         loading={<View style={{ flex: 1, backgroundColor: '#fff' }}></View>}
         persistor={persistor}
       >
-        <SafeAreaProvider>
-          <Navigation />
-        </SafeAreaProvider>
+        <SocketProvider>
+          <SafeAreaProvider>
+            <Navigation />
+          </SafeAreaProvider>
+        </SocketProvider>
       </PersistGate>
     </Provider>
   );

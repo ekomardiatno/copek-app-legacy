@@ -10,8 +10,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  TouchableHighlight,
-  SafeAreaView,
+  TouchableHighlight
 } from 'react-native';
 import { Button } from '../components/Components';
 import Color, { colorYiq } from '../components/Color';
@@ -100,7 +99,7 @@ export default class Login extends Component {
         const json = await result.json();
         if (json.status === 'OK') {
           const user = json.data;
-          AsyncStorage.setItem('token', json.token)
+          AsyncStorage.setItem('token', json.token);
           this.setState({
             isSigningIn: false,
             insertingOtp: true,
@@ -293,7 +292,7 @@ export default class Login extends Component {
     } = this.state;
     return render ? (
       <View style={{ paddingTop: StatusBar.currentHeight, flex: 1 }}>
-        <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
           <ScrollView>
             <View
               style={{
@@ -631,7 +630,7 @@ export default class Login extends Component {
               </View>
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
+        </View>
       </View>
     ) : null;
   }
